@@ -21,6 +21,7 @@ Press "S" to stop evaluation and gain control back.
 """
 
 # %%
+
 import time
 from multiprocessing.managers import SharedMemoryManager
 import click
@@ -44,6 +45,9 @@ from diffusion_policy.workspace.base_workspace import BaseWorkspace
 from diffusion_policy.policy.base_image_policy import BaseImagePolicy
 from diffusion_policy.common.cv2_util import get_image_transform
 
+# 复现采集状态用
+import os
+from diffusion_policy.common.replay_buffer      import ReplayBuffer
 
 OmegaConf.register_new_resolver("eval", eval, replace=True)
 
@@ -59,12 +63,20 @@ OmegaConf.register_new_resolver("eval", eval, replace=True)
 @click.option('--max_duration', '-md', default=60, help='Max duration for each epoch in seconds.')
 @click.option('--frequency', '-f', default=10, type=float, help="Control frequency in Hz.")
 @click.option('--command_latency', '-cl', default=0.01, type=float, help="Latency between receiving SapceMouse command to executing on Robot in Sec.")
-def main(input, output, robot_ip, match_dataset, match_episode,
-    vis_camera_idx, init_joints, 
-    steps_per_inference, max_duration,
-    frequency, command_latency):
+def main(input, 
+         output, 
+         robot_ip, 
+         match_dataset, 
+         match_episode,
+         vis_camera_idx, 
+         init_joints, 
+         steps_per_inference, 
+         max_duration,
+         frequency, 
+         command_latency):
     # load match_dataset
     match_camera_idx = 0
+    # 加载匹配数据集，指定匹配数据集时，创建重放缓冲区，并从视频中提取每一集的第一个帧
     episode_first_frame_map = dict()
     if match_dataset is not None:
         match_dir = pathlib.Path(match_dataset)
@@ -77,9 +89,33 @@ def main(input, output, robot_ip, match_dataset, match_episode,
                     str(match_video_path), num_frames=1)
                 episode_first_frame_map[episode_idx] = frames[0]
     print(f"Loaded initial frame for {len(episode_first_frame_map)} episodes")
-    
+    # # 加载匹配数据集，指定匹配数据集时，创建重放缓冲区，并从视频中提取每一集的第一个帧
+    # episode_first_frame_map = dict()
+    # match_replay_buffer = None
+    # if match_dataset is not None:
+    #     match_dir = pathlib.Path(match_dataset)
+    #     match_zarr_path = match_dir.joinpath('replay_buffer.zarr')
+    #     match_replay_buffer = ReplayBuffer.create_from_path(str(match_zarr_path), mode='r')
+    #     match_video_dir = match_dir.joinpath('videos')
+    #     for vid_dir in match_video_dir.glob("*/"):
+    #         episode_idx = int(vid_dir.stem)
+    #         match_video_path = vid_dir.joinpath(f'{match_camera}.mp4')
+    #         if match_video_path.exists():
+    #             img = None
+    #             with av.open(str(match_video_path)) as container:
+    #                 stream = container.streams.video[0]
+    #                 for frame in container.decode(stream):
+    #                     img = frame.to_ndarray(format='rgb24')
+    #                     break
+    #             episode_first_frame_map[episode_idx] = img
+    # print(f"5.加载初始框架给XX集 Loaded initial frame for {len(episode_first_frame_map)} episodes")
+            
+
+
     # load checkpoint
     ckpt_path = input
+    if not ckpt_path.endswith('.ckpt'):
+        ckpt_path = os.path.join(ckpt_path, 'checkpoints', 'latest.ckpt')
     payload = torch.load(open(ckpt_path, 'rb'), pickle_module=dill)
     cfg = payload['cfg']
     cls = hydra.utils.get_class(cfg._target_)
@@ -186,8 +222,10 @@ def main(input, output, robot_ip, match_dataset, match_episode,
                 print("Human in control!")
                 state = env.get_robot_state()
                 target_pose = state['TargetTCPPose']
+                # target_pose = state['ActualTCPPose']
                 t_start = time.monotonic()
                 iter_idx = 0
+                # ========== human control loop ==============
                 while True:
                     # calculate timing
                     t_cycle_end = t_start + (iter_idx + 1) * dt
@@ -361,55 +399,57 @@ def main(input, output, robot_ip, match_dataset, match_episode,
                             fontScale=0.5,
                             thickness=1,
                             color=(255,255,255)
-                        )
-                        cv2.imshow('default', vis_img[...,::-1])
+                        )                                               # 在可视化图像上绘制文本
+                        cv2.imshow('default', vis_img[...,::-1])        # 显示可视化图像
 
 
-                        key_stroke = cv2.pollKey()
-                        if key_stroke == ord('s'):
+                        key_stroke = cv2.pollKey()                      # 获取按键
+                        if key_stroke == ord('s'):                      # 如果按键为s，停止当前集，将控制权交还给人类
                             # Stop episode
                             # Hand control back to human
-                            env.end_episode()
-                            print('Stopped.')
+                            env.end_episode()                           # 结束当前集
+                            print('Stopped.')                           # 打印停止消息
                             break
 
-                        # auto termination
-                        terminate = False
-                        if time.monotonic() - t_start > max_duration:
-                            terminate = True
-                            print('Terminated by the timeout!')
+                        # auto termination                              # 9.自动终止
+                        terminate = False                               # 初始化终止标志为False
+                        if time.monotonic() - t_start > max_duration:   # 如果超过最大持续时间
+                            terminate = True                            # 设置终止标志为True
+                            print('Terminated by the timeout!')         # 打印超时终止消息
 
-                        term_pose = np.array([ 3.40948500e-01,  2.17721816e-01,  4.59076878e-02,  2.22014183e+00, -2.22184883e+00, -4.07186655e-04])
-                        curr_pose = obs['robot_eef_pose'][-1]
-                        dist = np.linalg.norm((curr_pose - term_pose)[:2], axis=-1)
-                        if dist < 0.03:
+                        term_pose = np.array([ 3.40948500e-01,  2.17721816e-01,  4.59076878e-02,  2.22014183e+00, -2.22184883e+00, -4.07186655e-04]) # 设置终止姿势
+                        curr_pose = obs['robot_eef_pose'][-1]                   # 获取当前的机器人末端执行器姿势
+                        dist = np.linalg.norm((curr_pose - term_pose)[:2], axis=-1) # 计算当前姿势和终止姿势之间的距离
+                        if dist < 0.03:                                         # 如果距离小于0.03，在终止区域内
                             # in termination area
-                            curr_timestamp = obs['timestamp'][-1]
-                            if term_area_start_timestamp > curr_timestamp:
-                                term_area_start_timestamp = curr_timestamp
+                            curr_timestamp = obs['timestamp'][-1]               # 获取当前时间戳
+                            if term_area_start_timestamp > curr_timestamp:      # 如果终止区域开始时间戳大于当前时间戳
+                                term_area_start_timestamp = curr_timestamp      # 更新终止区域开始时间戳
                             else:
-                                term_area_time = curr_timestamp - term_area_start_timestamp
-                                if term_area_time > 0.5:
-                                    terminate = True
-                                    print('Terminated by the policy!')
+                                term_area_time = curr_timestamp - term_area_start_timestamp     # 计算终止区域时间
+                                if term_area_time > 0.5:                        # 如果终止区域时间超过0.5秒
+                                    terminate = True                            # 设置终止标志为True
+                                    print('Terminated by the policy!')          # 打印策略终止消息
                         else:
-                            # out of the area
-                            term_area_start_timestamp = float('inf')
+                            # out of the area                       # 在终止区域外
+                            term_area_start_timestamp = float('inf')# 设置终止区域开始时间戳为无穷大
 
-                        if terminate:
+                        if terminate:                               # 如果终止标志为True，结束当前集
                             env.end_episode()
                             break
 
                         # wait for execution
-                        precise_wait(t_cycle_end - frame_latency)
-                        iter_idx += steps_per_inference
+                        # 10.等待执行
+                        precise_wait(t_cycle_end - frame_latency)   # 精确等待循环结束时间
+                        iter_idx += steps_per_inference             # 增加迭代索引
 
-                except KeyboardInterrupt:
-                    print("Interrupted!")
-                    # stop robot.
-                    env.end_episode()
+
+                except KeyboardInterrupt:   # 如果发生键盘中断
+                    print("Interrupted!")   # 打印中断消息
+                    # (XXXX)停止机器人
+                    env.end_episode()       # 结束当前集
                 
-                print("Stopped.")
+                print("Stopped.")           # 打印停止消息
 
 
 
