@@ -5,17 +5,17 @@ from spnav import spnav_open, spnav_poll_event, spnav_close, SpnavMotionEvent, S
 from diffusion_policy.shared_memory.shared_memory_ring_buffer import SharedMemoryRingBuffer
 
 class Spacemouse(mp.Process):
-    def __init__(self, 
-            shm_manager, 
-            get_max_k=30, 
-            frequency=200,
-            max_value=500, 
-            deadzone=(0,0,0,0,0,0), 
-            dtype=np.float32,
-            n_buttons=2,
-            ):
+    def __init__(self,
+                 shm_manager,
+                 get_max_k=30,
+                 frequency=200,
+                 max_value=500,
+                 deadzone=(0, 0, 0, 0, 0, 0),
+                 dtype=np.float32,
+                 n_buttons=26,
+                 ):
         """
-        Continuously listen to 3D connection space naviagtor events
+        Continuously listen to 3D connection space navigator events
         and update the latest state.
 
         max_value: {300, 500} 300 for wired version and 500 for wireless
@@ -44,9 +44,16 @@ class Spacemouse(mp.Process):
         self.n_buttons = n_buttons
         # self.motion_event = SpnavMotionEvent([0,0,0], [0,0,0], 0)
         # self.button_state = defaultdict(lambda: False)
+        # self.tx_zup_spnav = np.array([
+        #     [0,0,-1],
+        #     [1,0,0],
+        #     [0,1,0]
+        # ], dtype=dtype)
+        
+        #根据实验室的空间鼠标修改正确的坐标系
         self.tx_zup_spnav = np.array([
-            [0,0,-1],
-            [1,0,0],
+            [0,0,1],
+            [-1,0,0],
             [0,1,0]
         ], dtype=dtype)
 
@@ -155,6 +162,7 @@ class Spacemouse(mp.Process):
                         'button_state': button_state,
                         'receive_timestamp': receive_timestamp
                     })
+
                     time.sleep(1/self.frequency)
         finally:
             spnav_close()

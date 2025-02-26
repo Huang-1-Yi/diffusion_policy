@@ -5,7 +5,8 @@ import time
 import shutil
 import math
 from multiprocessing.managers import SharedMemoryManager
-from diffusion_policy.real_world.rtde_interpolation_controller import RTDEInterpolationController
+# from diffusion_policy.real_world.rtde_interpolation_controller import RTDEInterpolationController
+from diffusion_policy.real_world.franka_interpolation_controller import FrankaInterpolationController
 from diffusion_policy.real_world.multi_realsense import MultiRealsense, SingleRealsense
 from diffusion_policy.real_world.video_recorder import VideoRecorder
 from diffusion_policy.common.timestamp_accumulator import (
@@ -17,11 +18,18 @@ from diffusion_policy.real_world.multi_camera_visualizer import MultiCameraVisua
 from diffusion_policy.common.replay_buffer import ReplayBuffer
 from diffusion_policy.common.cv2_util import (
     get_image_transform, optimal_row_cols)
-# RealEnv
+
+
+import os
+import cv2
+import numpy as np
+import open3d as o3d
+import pyrealsense2 as rs
+
+
 DEFAULT_OBS_KEY_MAP = {
     # robot
     'ActualTCPPose': 'robot_eef_pose',
-    'ActualTCPSpeed': 'robot_eef_pose_vel',
     'ActualQ': 'robot_joint',
     'ActualQd': 'robot_joint_vel',
     # timestamps
@@ -29,38 +37,41 @@ DEFAULT_OBS_KEY_MAP = {
     'timestamp': 'timestamp'
 }
 
-class RealEnv:
+class RealEnvFranka:
     def __init__(self,
             # required params
-            output_dir,
-            robot_ip,
+            output_dir,         # 输出目录
+            robot_ip,           # 机器人IP地址
             # env params
-            frequency=10,
-            n_obs_steps=2,
+            frequency=10,       # 控制频率
+            n_obs_steps=2,      # 观察步数
             # obs
-            obs_image_resolution=(640, 480),
-            max_obs_buffer_size=30,
-            camera_serial_numbers=None,
-            obs_key_map=DEFAULT_OBS_KEY_MAP,
-            obs_float32=False,
+            obs_image_resolution=(640,480),         # 观察图像分辨率
+            max_obs_buffer_size=30,                 # 最大观察缓冲区大小
+            camera_serial_numbers=None,             # 相机序列号
+            obs_key_map=DEFAULT_OBS_KEY_MAP,        # 观察键映射
+            obs_float32=False,                      # 观察数据类型
+            # this latency compensates receive_timestamp
+            # all in seconds
+            robot_obs_latency=0.0001,
             # action
-            max_pos_speed=0.25,
-            max_rot_speed=0.6,
+            max_pos_speed=0.25,                     # 最大位置速度
+            max_rot_speed=0.6,                      # 最大旋转速度
             # robot
-            tcp_offset=0.13,
-            init_joints=False,
+            tcp_offset=0.13,                        # TCP偏移
+            init_joints=False,                      # 是否初始化关节
             # video capture params
-            video_capture_fps=30,
-            video_capture_resolution=(1280, 720),
+            video_capture_fps=30,                   # 视频捕捉帧率
+            video_capture_resolution=(1280,720),    # 视频捕捉分辨率
             # saving params
-            record_raw_video=True,
-            thread_per_video=2,
-            video_crf=21,
+            record_raw_video=True,                  # 是否记录原始视频，默认是
+            thread_per_video=2,                     # 每个视频的线程数
+            video_crf=21,                           # 视频质量
             # vis params
-            enable_multi_cam_vis=True,
-            multi_cam_vis_resolution=(1280, 720),
+            enable_multi_cam_vis=True,              # 是否启用多相机可视化
+            multi_cam_vis_resolution=(1280,720),    # 多相机可视化分辨率
             # shared memory
-            shm_manager=None
+            shm_manager=None                        # 共享内存管理器
             ):
         assert frequency <= video_capture_fps
         output_dir = pathlib.Path(output_dir)
@@ -132,7 +143,10 @@ class RealEnv:
             put_downsample=False,
             record_fps=recording_fps,
             enable_color=True,
-            enable_depth=False,
+
+
+
+            enable_depth=True,                      # 3D保存
             enable_infrared=False,
             get_max_k=max_obs_buffer_size,
             transform=transform,
@@ -151,32 +165,26 @@ class RealEnv:
                 rgb_to_bgr=False
             )
 
-        cube_diag = np.linalg.norm([1, 1, 1])
-        j_init = np.array([0, -90, -90, -90, 90, 0]) / 180 * np.pi
+        # cube_diag = np.linalg.norm([1, 1, 1])
+        j_init = np.array([-0.165, -0.059, 0.167, -1.693, 0.002, 1.642, 0.751])
         if not init_joints:
             j_init = None
 
-        robot = RTDEInterpolationController(
+        robot = FrankaInterpolationController(
             shm_manager=shm_manager,
             robot_ip=robot_ip,
-            frequency=125,  # UR5 CB3 RTDE
-            lookahead_time=0.1,
-            gain=300,
-            max_pos_speed=max_pos_speed*cube_diag,
-            max_rot_speed=max_rot_speed*cube_diag,
-            launch_timeout=3,
-            tcp_offset_pose=[0, 0, tcp_offset,0,0,0],
-            payload_mass=None,
-            payload_cog=None,
+            frequency=200,
+            Kx_scale=1.0,
+            Kxd_scale=np.array([2.0, 1.5, 2.0, 1.0, 1.0, 1.0]),
             joints_init=j_init,
-            joints_init_speed=1.05,
-            soft_real_time=False,
+            joints_init_duration=3.0,
             verbose=False,
-            receive_keys=None,
-            get_max_k=max_obs_buffer_size
-            )
+            receive_latency=robot_obs_latency
+        )
+
         self.realsense = realsense
         self.robot = robot
+        # self.gripper = gripper
         self.multi_cam_vis = multi_cam_vis
         self.video_capture_fps = video_capture_fps
         self.frequency = frequency
@@ -201,6 +209,7 @@ class RealEnv:
     # ======== start-stop API =============
     @property
     def is_ready(self):
+        # print()
         return self.realsense.is_ready and self.robot.is_ready
 
     def start(self, wait=True):
@@ -263,16 +272,23 @@ class RealEnv:
 
         camera_obs = dict()
         for camera_idx, value in self.last_realsense_data.items():
-            this_timestamps = value['timestamp']
-            this_idxs = list()
-            for t in obs_align_timestamps:
-                is_before_idxs = np.nonzero(this_timestamps < t)[0]
-                this_idx = 0
-                if len(is_before_idxs) > 0:
-                    this_idx = is_before_idxs[-1]
-                this_idxs.append(this_idx)
+            
+            # 打印self.last_realsense_data的内容
+            # print(f"Camera {camera_idx}:")
+            # for key, val in value.items():
+            #     print(f"  {key}: {type(val)} with shape {np.shape(val)}")
+
+            this_timestamps = value['timestamp']    # 获取当前相机的时间戳
+            this_idxs = list()                      # 初始化索引列表
+            for t in obs_align_timestamps:          # 遍历对齐的时间戳
+                is_before_idxs = np.nonzero(this_timestamps < t)[0] # 找到所有小于当前时间戳的索引
+                this_idx = 0                        # 初始化当前索引为0
+                if len(is_before_idxs) > 0:         # 如果存在小于当前时间戳的索引
+                    this_idx = is_before_idxs[-1]   # 取最后一个小于当前时间戳的索引
+                this_idxs.append(this_idx)          # 将索引添加到索引列表中
             # remap key
-            camera_obs[f'camera_{camera_idx}'] = value['color'][this_idxs]
+            camera_obs[f'camera_{camera_idx}'] = value['color'][this_idxs]          # 将颜色数据映射到相机观察字典中
+            camera_obs[f'camera_{camera_idx}_depth'] = value['depth'][this_idxs]    # 存储深度数据
 
         # align robot obs
         robot_timestamps = last_robot_data['robot_receive_timestamp']
@@ -302,10 +318,10 @@ class RealEnv:
             )
 
         # return obs
-        obs_data = dict(camera_obs)
-        obs_data.update(robot_obs)
-        obs_data['timestamp'] = obs_align_timestamps
-        return obs_data
+        obs_data = dict(camera_obs)                     # 初始化观察数据为相机观察数据
+        obs_data.update(robot_obs)                      # 更新观察数据为机器人观察数据
+        obs_data['timestamp'] = obs_align_timestamps    # 设置观察数据的时间戳
+        return obs_data                                 # 返回观察数据
 
     def exec_actions(self,
                      actions: np.ndarray,

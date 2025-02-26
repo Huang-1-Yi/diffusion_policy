@@ -4,11 +4,17 @@ import scipy.spatial.transform as st
 import numpy as np
 import torch
 
+from polymetis import GripperInterface  
+
+
+
 
 class FrankaInterface:
     def __init__(self):
-        self.robot = RobotInterface(ip_address="172.16.0.3")
+        self.robot = RobotInterface(ip_address="localhost")   #localhost
+        self.gripper = GripperInterface(ip_address="localhost")   #localhost
 
+        
     def get_ee_pose(self):
         data = self.robot.get_ee_pose()
         pos = data[0].numpy()
@@ -44,6 +50,13 @@ class FrankaInterface:
     def terminate_current_policy(self):
         self.robot.terminate_current_policy()
 
+    def open_gripper(self, width=0.08, speed=0.02):
+
+        self.gripper.goto(width=width, speed=speed, force=0.0)
+
+    def close_gripper(self, force=20.0):
+        
+        self.gripper.grasp(width=0.0, speed=0.02, force=force)
 
 s = zerorpc.Server(FrankaInterface())
 s.bind("tcp://0.0.0.0:4242")
