@@ -253,7 +253,7 @@ class FrankaInterpolationController(mp.Process):
         self.input_queue.put(message)                   #将指令放入 input_queue
 
 
-    #夹抓打开，利用input_queue.put(message)  修改12月12日16.26
+    # 夹抓打开，利用input_queue.put(message)  修改12月12日16.26
     def schedule_gripper_command(self, width, force, speed):
         # assert width >= 0.0, "Gripper width must be non-negative."
         # assert force > 0.0, "Gripper force must be positive."
@@ -281,7 +281,7 @@ class FrankaInterpolationController(mp.Process):
         return self.ring_buffer.get_all()
 
     # ========= main loop in process ============
-    #robot1 = FrankaInterface()
+    # robot1 = FrankaInterface()
     def run(self):
         # 软实时控制，确保控制循环不会后退
         if self.soft_real_time:
@@ -296,36 +296,36 @@ class FrankaInterpolationController(mp.Process):
                 print(f"[FrankaPositionalController] Connect to robot: {self.robot_ip}")   #打印连接到机器人的信息
 
             # 初始化机器人关节
-            if self.joints_init is not None:     #如果关节初始化不为空
-                robot.move_to_joint_positions(               #移动到关节位置
-                    positions=np.asarray(self.joints_init),     #关节位置为 self.joints_init
-                    time_to_go=self.joints_init_duration           #移动时间为 self.joints_init_duration
+            if self.joints_init is not None:    # 如果关节初始化不为空
+                robot.move_to_joint_positions(                          # 移动到关节位置
+                    positions=np.asarray(self.joints_init),             # 关节位置为 self.joints_init
+                    time_to_go=self.joints_init_duration                # 移动时间为 self.joints_init_duration
                 )
 
-            # 这部分是机械臂轨迹规划的核心代码
-            dt = 1. / self.frequency    #计算周期
-            curr_pose = robot.get_ee_pose()      #获取当前末端执行器姿态
+            # 机械臂轨迹规划的核心代码
+            dt = 1. / self.frequency            # 计算周期
+            curr_pose = robot.get_ee_pose()     # 获取当前末端执行器姿态
 
             # use monotonic time to make sure the control loop never go backward
-            curr_t = time.monotonic()    #获取当前时间
-            last_waypoint_time = curr_t    #上一个路点时间
-            pose_interp = PoseTrajectoryInterpolator(    #实例化 PoseTrajectoryInterpolator 一个轨迹插值器  
-                times=[curr_t],   #时间为当前时间
-                poses=[curr_pose]    #姿态为当前姿态
+            curr_t = time.monotonic()           # 获取当前时间
+            last_waypoint_time = curr_t         # 上一个路点时间
+            pose_interp = PoseTrajectoryInterpolator(    # 实例化 PoseTrajectoryInterpolator 一个轨迹插值器  
+                times=[curr_t],                 # 时间为当前时间
+                poses=[curr_pose]               # 姿态为当前姿态
             )
 
             # 笛卡尔阻抗控制
             robot.start_cartesian_impedance(
-                Kx=self.Kx,   #刚度矩阵系数，用于控制力控
-                Kxd=self.Kxd  #阻尼矩阵系数，用于控制速度
+                Kx=self.Kx,                     # 刚度矩阵系数，用于控制力控
+                Kxd=self.Kxd                    # 阻尼矩阵系数，用于控制速度
             )
 
-            t_start = time.monotonic()    #获取当前时间
-            iter_idx = 0                  #迭代次数
-            keep_running = True           #是否继续运行
-            while keep_running:           #循环
+            t_start = time.monotonic()          # 获取当前时间
+            iter_idx = 0                        # 迭代次数
+            keep_running = True                 # 是否继续运行
+            while keep_running:                 # 循环
                 # send command to robot
-                t_now = time.monotonic()     #获取当前时间
+                t_now = time.monotonic()        # 获取当前时间
                 # diff = t_now - pose_interp.times[-1]
                 # if diff > 0:
                 #     print('extrapolate', diff)

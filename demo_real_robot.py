@@ -3,16 +3,16 @@ Usage:
 (robodiff)$ python demo_real_robot.py -o <demo_save_dir> --robot_ip <ip_of_ur5>
 
 Robot movement:
-Move your SpaceMouse to move the robot EEF (locked in xy plane).
-Press SpaceMouse right button to unlock z axis.
-Press SpaceMouse left button to enable rotation axes.
+    Move your SpaceMouse to move the robot EEF (locked in xy plane).
+        Press SpaceMouse right button to unlock z axis.
+        Press SpaceMouse left button to enable rotation axes.
 
 Recording control:
-Click the opencv window (make sure it's in focus).
-Press "C" to start recording.
-Press "S" to stop recording.
-Press "Q" to exit program.
-Press "Backspace" to delete the previously recorded episode.
+    Click the opencv window (make sure it's in focus).
+        Press "C" to start recording.
+        Press "S" to stop recording.
+        Press "Q" to exit program.
+        Press "Backspace" to delete the previously recorded episode.
 """
 
 # %%
