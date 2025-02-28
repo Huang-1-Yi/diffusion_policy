@@ -1,0 +1,76 @@
+import zerorpc
+import time
+
+gripper_client = zerorpc.Client()
+gripper_client.connect("tcp://192.16.0.30:4242")
+
+def main():
+  print("阻塞测试")
+  gripper_client.open_gripper(0.08,0.02,True)
+  print("state: width=0.08, 0.02,True")
+  time.sleep(5) 
+  gripper_client.close_gripper(0.00,0.02,True)
+  print("state: width=0.00, 0.02,True")
+  time.sleep(5) 
+
+  # print("阻塞测试")
+  # gripper_client.open_gripper(0.03,0.02,True,0,0)
+  # print("state: width=0.03, 0.02,True")
+  # time.sleep(3)
+  # gripper_client.open_gripper(0.08,0.02,True,0,0)
+  # print("state: width=0.08, 0.02,True")
+  # time.sleep(5) 
+  # gripper_client.open_gripper(0.00,0.02,True,0,0)
+  # print("state: width=0.00, 0.02,True")
+  # time.sleep(5) 
+
+  # print("阻塞测试")
+  # gripper_client.open_gripper(0.03,0.02,True)
+  # print("state: width=0.03, 0.02,True")
+  # time.sleep(3)
+  # gripper_client.open_gripper(0.08,0.02,True)
+  # print("state: width=0.08, 0.02,True")
+  # time.sleep(5) 
+  # gripper_client.open_gripper(0.00,0.02,True)
+  # print("state: width=0.00, 0.02,True")
+  # time.sleep(5) 
+
+  # print("非阻塞测试")
+  # gripper_client.open_gripper(0.03,0.02,False)
+  # print("state: width=0.03, 0.02,True")
+  # time.sleep(0.5)
+  # gripper_client.open_gripper(0.08,0.02,False)
+  # print("state: width=0.08, 0.02,False")
+  # time.sleep(0.5) 
+  # gripper_client.open_gripper(0.00,0.02,False)
+  # print("state: width=0.00, 0.02,False")
+  # time.sleep(0.5)
+
+  # print("非阻塞测试")
+  # gripper_client.close_gripper(block=True)
+  # time.sleep(3)
+  # gripper_client.open_gripper(0.03,0.02,False)
+  # print("state: width=0.03, 0.02,False")
+  # time.sleep(0.5)
+  # gripper_client.open_gripper(0.08,0.02,False)
+  # print("state: width=0.08, 0.02,False")
+  # time.sleep(0.5) 
+  # gripper_client.open_gripper(0.00,0.02,False)
+  # print("state: width=0.00, 0.02,False")
+  # time.sleep(0.5)  
+
+  #while(1):
+  #按键a按下启动
+  # if gripper_client.is_button_pressed(0):
+  #   print("button 0 pressed")
+  #   gripper_client.open_gripper()
+    # time.sleep(2)
+  # gripper_client.open_gripper()   
+  # #time.sleep(0.1)
+  # gripper_client.close_gripper(block=True)
+  # #time.sleep(0.5)
+  # gripper_client.open_gripper()
+  # #time.sleep(0.5)
+  # gripper_client.close_gripper(block=True)
+if  __name__ =='__main__':
+  main()

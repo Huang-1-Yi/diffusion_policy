@@ -33,7 +33,6 @@ import numpy                                            as np
 from multiprocessing.managers                           import SharedMemoryManager
 import scipy.spatial.transform                          as st
 from umi.real_world.spacemouse_shared_memory            import Spacemouse
-from umi.real_world.wsg_controller                      import WSGController
 from umi.common.precise_sleep                           import precise_wait
 from umi.real_world.keystroke_counter                   import (KeystrokeCounter, Key, KeyCode)
 from umi.real_world.franka_interpolation_controller     import FrankaInterpolationController
@@ -44,7 +43,7 @@ from umi.real_world.franka_interpolation_controller     import FrankaInterpolati
 
 
 @click.command()
-@click.option('-rh', '--robot_hostname', default='192.168.1.1')
+@click.option('-rh', '--robot_hostname', default='192.168.1.30')
 @click.option('-gh', '--gripper_hostname', default='192.168.1.20')
 @click.option('-gp', '--gripper_port', type=int, default=1000)
 @click.option('-f', '--frequency', type=float, default=30)
@@ -60,9 +59,7 @@ def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_spee
     command_latency = dt / 2
     # 使用SharedMemoryManager来创建一个共享内存区域,以便在不同的进程间共享数据
     with SharedMemoryManager() as shm_manager:
-        with WSGController(shm_manager=shm_manager,hostname=gripper_hostname,port=gripper_port,
-            frequency=frequency,move_max_speed=400.0,verbose=False) as gripper, \
-        KeystrokeCounter() as key_counter, \
+        with KeystrokeCounter() as key_counter, \
         FrankaInterpolationController(shm_manager=shm_manager,robot_ip=robot_hostname,
             frequency=100,Kx_scale=5.0,Kxd_scale=2.0,verbose=False) as controller, \
         Spacemouse(shm_manager=shm_manager) as sm:
@@ -80,9 +77,7 @@ def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_spee
             # time.sleep(8)
             # exit()
         
-            gripper_target_pos = gripper.get_state()['gripper_position']# 从返回的夹爪字典里提取位置信息
             t_start = time.monotonic()                                  # 当前时间戳
-            gripper.restart_put(t_start-time.monotonic() + time.time()) # 重新启动WSG抓手的放置动作
             # 初始化 迭代索引iter_idx 和 停止标志stop
             iter_idx = 0
             stop = False
@@ -104,7 +99,8 @@ def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_spee
                         stop = True
                 precise_wait(t_sample)                          # 精确地等待一段时间
                 sm_state = sm.get_motion_state_transformed()    # 获取SpaceMouse的运动状态,并计算平移和旋转速度
-                # print(sm_state)
+
+                print(sm_state)
                 dpos = sm_state[:3] * (max_pos_speed / frequency)
                 drot_xyz = sm_state[3:] * (max_rot_speed / frequency)
 
@@ -119,13 +115,11 @@ def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_spee
                     dpos = -gripper_speed / frequency
                 if sm.is_button_pressed(1):
                     dpos = gripper_speed / frequency
-                gripper_target_pos = np.clip(gripper_target_pos + dpos, 0, max_gripper_width)
+                # gripper_target_pos = np.clip(gripper_target_pos + dpos, 0, max_gripper_width)
                 # 调度控制器到目标姿态的路径点
                 controller.schedule_waypoint(target_pose, 
                     t_command_target-time.monotonic()+time.time())
                 # 调度夹爪到目标位置的路径点
-                gripper.schedule_waypoint(gripper_target_pos, 
-                    t_command_target-time.monotonic()+time.time())
                 precise_wait(t_cycle_end)# 精确等待到下一个周期结束
                 iter_idx += 1
                 # print(1/(time.time() -s))# 计算并打印循环时间,即当前时间减去循环开始时间的倒数
