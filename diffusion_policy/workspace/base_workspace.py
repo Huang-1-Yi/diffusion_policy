@@ -10,23 +10,24 @@ import torch
 import threading
 
 
-class BaseWorkspace:
-    include_keys = tuple()
-    exclude_keys = tuple()
 
-    def __init__(self, cfg: OmegaConf, output_dir: Optional[str]=None):
-        self.cfg = cfg
-        self._output_dir = output_dir
-        self._saving_thread = None
+class BaseWorkspace: # 定义BaseWorkspace类
+    include_keys = tuple() # 包含的键的元组
+    exclude_keys = tuple() # 排除的键的元组
+
+    def __init__(self, cfg: OmegaConf, output_dir: Optional[str]=None): # 初始化方法，接收配置和输出目录参数
+        self.cfg = cfg # 保存配置
+        self._output_dir = output_dir # 保存输出目录
+        self._saving_thread = None # 初始化保存线程为None
 
     @property
-    def output_dir(self):
-        output_dir = self._output_dir
-        if output_dir is None:
-            output_dir = HydraConfig.get().runtime.output_dir
-        return output_dir
+    def output_dir(self): # 定义输出目录的属性方法
+        output_dir = self._output_dir # 获取输出目录
+        if output_dir is None: # 如果输出目录为None
+            output_dir = HydraConfig.get().runtime.output_dir # 从Hydra配置获取运行时输出目录
+        return output_dir # 返回输出目录
     
-    def run(self):
+    def run(self): # 定义运行方法
         """
         Create any resource shouldn't be serialized as local variables
         """
@@ -35,111 +36,110 @@ class BaseWorkspace:
     def save_checkpoint(self, path=None, tag='latest', 
             exclude_keys=None,
             include_keys=None,
-            use_thread=True):
-        if path is None:
-            path = pathlib.Path(self.output_dir).joinpath('checkpoints', f'{tag}.ckpt')
+            use_thread=True): # 定义保存检查点的方法
+        if path is None: # 如果路径为None
+            path = pathlib.Path(self.output_dir).joinpath('checkpoints', f'{tag}.ckpt') # 设置默认路径
         else:
-            path = pathlib.Path(path)
-        if exclude_keys is None:
-            exclude_keys = tuple(self.exclude_keys)
-        if include_keys is None:
-            include_keys = tuple(self.include_keys) + ('_output_dir',)
+            path = pathlib.Path(path) # 否则使用提供的路径
+        if exclude_keys is None: # 如果排除的键为None
+            exclude_keys = tuple(self.exclude_keys) # 使用类属性中的排除键
+        if include_keys is None: # 如果包含的键为None
+            include_keys = tuple(self.include_keys) + ('_output_dir',) # 使用类属性中的包含键并添加'_output_dir'
 
-        path.parent.mkdir(parents=False, exist_ok=True)
+        path.parent.mkdir(parents=False, exist_ok=True) # 创建路径的父目录
         payload = {
             'cfg': self.cfg,
             'state_dicts': dict(),
             'pickles': dict()
-        } 
+        }  # 初始化保存的数据
 
-        for key, value in self.__dict__.items():
-            if hasattr(value, 'state_dict') and hasattr(value, 'load_state_dict'):
-                # modules, optimizers and samplers etc
-                if key not in exclude_keys:
-                    if use_thread:
-                        payload['state_dicts'][key] = _copy_to_cpu(value.state_dict())
+        for key, value in self.__dict__.items(): # 遍历对象的属性
+            if hasattr(value, 'state_dict') and hasattr(value, 'load_state_dict'): # 如果属性有state_dict和load_state_dict方法
+                if key not in exclude_keys: # 如果键不在排除键列表中
+                    if use_thread: # 如果使用线程
+                        payload['state_dicts'][key] = _copy_to_cpu(value.state_dict()) # 将状态字典复制到CPU
                     else:
-                        payload['state_dicts'][key] = value.state_dict()
-            elif key in include_keys:
-                payload['pickles'][key] = dill.dumps(value)
-        if use_thread:
+                        payload['state_dicts'][key] = value.state_dict() # 直接使用状态字典
+            elif key in include_keys: # 如果键在包含键列表中
+                payload['pickles'][key] = dill.dumps(value) # 使用dill序列化属性
+        if use_thread: # 如果使用线程
             self._saving_thread = threading.Thread(
-                target=lambda : torch.save(payload, path.open('wb'), pickle_module=dill))
-            self._saving_thread.start()
+                target=lambda : torch.save(payload, path.open('wb'), pickle_module=dill)) # 创建保存线程
+            self._saving_thread.start() # 启动保存线程
         else:
-            torch.save(payload, path.open('wb'), pickle_module=dill)
-        return str(path.absolute())
+            torch.save(payload, path.open('wb'), pickle_module=dill) # 直接保存数据
+        return str(path.absolute()) # 返回绝对路径
     
-    def get_checkpoint_path(self, tag='latest'):
-        return pathlib.Path(self.output_dir).joinpath('checkpoints', f'{tag}.ckpt')
+    def get_checkpoint_path(self, tag='latest'): # 获取检查点路径的方法
+        return pathlib.Path(self.output_dir).joinpath('checkpoints', f'{tag}.ckpt') # 返回检查点路径
 
-    def load_payload(self, payload, exclude_keys=None, include_keys=None, **kwargs):
-        if exclude_keys is None:
-            exclude_keys = tuple()
-        if include_keys is None:
-            include_keys = payload['pickles'].keys()
+    def load_payload(self, payload, exclude_keys=None, include_keys=None, **kwargs): # 加载数据的方法
+        if exclude_keys is None: # 如果排除键为None
+            exclude_keys = tuple() # 初始化为空元组
+        if include_keys is None: # 如果包含键为None
+            include_keys = payload['pickles'].keys() # 使用数据中的键
 
-        for key, value in payload['state_dicts'].items():
-            if key not in exclude_keys:
-                self.__dict__[key].load_state_dict(value, **kwargs)
-        for key in include_keys:
-            if key in payload['pickles']:
-                self.__dict__[key] = dill.loads(payload['pickles'][key])
+        for key, value in payload['state_dicts'].items(): # 遍历状态字典
+            if key not in exclude_keys: # 如果键不在排除键列表中
+                self.__dict__[key].load_state_dict(value, **kwargs) # 加载状态字典
+        for key in include_keys: # 遍历包含键
+            if key in payload['pickles']: # 如果键在数据中
+                self.__dict__[key] = dill.loads(payload['pickles'][key]) # 反序列化并加载属性
     
     def load_checkpoint(self, path=None, tag='latest',
             exclude_keys=None, 
             include_keys=None, 
-            **kwargs):
-        if path is None:
-            path = self.get_checkpoint_path(tag=tag)
+            **kwargs): # 加载检查点的方法
+        if path is None: # 如果路径为None
+            path = self.get_checkpoint_path(tag=tag) # 获取默认路径
         else:
-            path = pathlib.Path(path)
-        payload = torch.load(path.open('rb'), pickle_module=dill, **kwargs)
+            path = pathlib.Path(path) # 否则使用提供的路径
+        payload = torch.load(path.open('rb'), pickle_module=dill, **kwargs) # 加载检查点数据
         self.load_payload(payload, 
             exclude_keys=exclude_keys, 
-            include_keys=include_keys)
-        return payload
+            include_keys=include_keys) # 加载数据
+        return payload # 返回数据
     
     @classmethod
     def create_from_checkpoint(cls, path, 
             exclude_keys=None, 
             include_keys=None,
-            **kwargs):
-        payload = torch.load(open(path, 'rb'), pickle_module=dill)
-        instance = cls(payload['cfg'])
+            **kwargs): # 从检查点创建实例的方法
+        payload = torch.load(open(path, 'rb'), pickle_module=dill) # 加载检查点数据
+        instance = cls(payload['cfg']) # 创建实例
         instance.load_payload(
             payload=payload, 
             exclude_keys=exclude_keys,
             include_keys=include_keys,
-            **kwargs)
-        return instance
+            **kwargs) # 加载数据
+        return instance # 返回实例
 
-    def save_snapshot(self, tag='latest'):
+    def save_snapshot(self, tag='latest'): # 保存快照的方法
         """
-        Quick loading and saving for reserach, saves full state of the workspace.
+        Quick loading and saving for research, saves full state of the workspace.
 
         However, loading a snapshot assumes the code stays exactly the same.
         Use save_checkpoint for long-term storage.
         """
-        path = pathlib.Path(self.output_dir).joinpath('snapshots', f'{tag}.pkl')
-        path.parent.mkdir(parents=False, exist_ok=True)
-        torch.save(self, path.open('wb'), pickle_module=dill)
-        return str(path.absolute())
+        path = pathlib.Path(self.output_dir).joinpath('snapshots', f'{tag}.pkl') # 设置快照路径
+        path.parent.mkdir(parents=False, exist_ok=True) # 创建路径的父目录
+        torch.save(self, path.open('wb'), pickle_module=dill) # 保存快照
+        return str(path.absolute()) # 返回快照的绝对路径
     
     @classmethod
-    def create_from_snapshot(cls, path):
-        return torch.load(open(path, 'rb'), pickle_module=dill)
+    def create_from_snapshot(cls, path): # 从快照创建实例的方法
+        return torch.load(open(path, 'rb'), pickle_module=dill) # 加载快照并返回实例
 
-
-def _copy_to_cpu(x):
-    if isinstance(x, torch.Tensor):
-        return x.detach().to('cpu')
-    elif isinstance(x, dict):
-        result = dict()
-        for k, v in x.items():
-            result[k] = _copy_to_cpu(v)
-        return result
-    elif isinstance(x, list):
-        return [_copy_to_cpu(k) for k in x]
+def _copy_to_cpu(x): # 定义将数据复制到CPU的方法
+    if isinstance(x, torch.Tensor): # 如果是张量
+        return x.detach().to('cpu') # 复制到CPU
+    elif isinstance(x, dict): # 如果是字典
+        result = dict() # 初始化结果字典
+        for k, v in x.items(): # 遍历字典的键和值
+            result[k] = _copy_to_cpu(v) # 递归复制到CPU
+        return result # 返回结果字典
+    elif isinstance(x, list): # 如果是列表
+        return [_copy_to_cpu(k) for k in x] # 递归复制到CPU
     else:
-        return copy.deepcopy(x)
+        return copy.deepcopy(x) # 深拷贝并返回
+

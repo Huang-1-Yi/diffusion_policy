@@ -1,40 +1,40 @@
-name: pusht_image
+name: pusht_image # 任务名称
 
-image_shape: &image_shape [3, 96, 96]
-shape_meta: &shape_meta
-  # acceptable types: rgb, low_dim
-  obs:
-    image:
-      shape: *image_shape
-      type: rgb
-    agent_pos:
-      shape: [2]
-      type: low_dim
-  action:
-    shape: [2]
+image_shape: &image_shape [3, 96, 96] # 图像形状，并赋值给锚点image_shape
+shape_meta: &shape_meta # 形状元数据，并赋值给锚点shape_meta
+  # acceptable types: rgb, low_dim # 可接受的类型：rgb, low_dim
+  obs:    # 观测
+    image:    # 图像
+      shape: *image_shape # 使用锚点image_shape
+      type: rgb       # 类型为RGB
+    agent_pos:        # 代理位置
+      shape: [2]      # 代理位置形状
+      type: low_dim   # 类型为低维度
+  action:     # 动作
+    shape: [2]        # 动作形状
 
-env_runner:
-  _target_: diffusion_policy.env_runner.pusht_image_runner.PushTImageRunner
-  n_train: 6
-  n_train_vis: 2
-  train_start_seed: 0
-  n_test: 50
-  n_test_vis: 4
-  legacy_test: True
-  test_start_seed: 100000
-  max_steps: 300
-  n_obs_steps: ${n_obs_steps}
-  n_action_steps: ${n_action_steps}
-  fps: 10
-  past_action: ${past_action_visible}
-  n_envs: null
+env_runner: # 环境运行器配置
+  _target_: diffusion_policy.env_runner.pusht_image_runner.PushTImageRunner # 指定PushT图像运行器的目标类
+  n_train: 6 # 训练数量
+  n_train_vis: 2 # 可视化训练数量
+  train_start_seed: 0 # 训练起始随机种子
+  n_test: 50 # 测试数量
+  n_test_vis: 4 # 可视化测试数量
+  legacy_test: True # 是否进行传统测试
+  test_start_seed: 100000 # 测试起始随机种子
+  max_steps: 300 # 最大步数
+  n_obs_steps: ${n_obs_steps} # 观测步数
+  n_action_steps: ${n_action_steps} # 动作步数
+  fps: 10 # 每秒帧数
+  past_action: ${past_action_visible} # 是否显示过去的动作
+  n_envs: null # 环境数
 
-dataset:
-  _target_: diffusion_policy.dataset.pusht_image_dataset.PushTImageDataset
-  zarr_path: data/pusht/pusht_cchi_v7_replay.zarr
-  horizon: ${horizon}
-  pad_before: ${eval:'${n_obs_steps}-1'}
-  pad_after: ${eval:'${n_action_steps}-1'}
-  seed: 42
-  val_ratio: 0.02
-  max_train_episodes: 90
+dataset: # 数据集配置
+  _target_: diffusion_policy.dataset.pusht_image_dataset.PushTImageDataset # 指定PushT图像数据集的目标类
+  zarr_path: data/pusht/pusht_cchi_v7_replay.zarr   # Zarr数据路径
+  horizon: ${horizon}                       # 时间跨度
+  pad_before: ${eval:'${n_obs_steps}-1'}    # 前填充步数
+  pad_after: ${eval:'${n_action_steps}-1'}  # 后填充步数
+  seed: 42                                  # 随机种子
+  val_ratio: 0.02                           # 验证集比例
+  max_train_episodes: 90                    # 最大训练集数

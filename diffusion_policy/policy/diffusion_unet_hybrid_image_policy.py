@@ -182,6 +182,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         model = self.model
         scheduler = self.noise_scheduler
 
+        # 随机大小相同的随机噪声
         trajectory = torch.randn(
             size=condition_data.shape, 
             dtype=condition_data.dtype,
@@ -192,7 +193,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         scheduler.set_timesteps(self.num_inference_steps)
 
         for t in scheduler.timesteps:
-            # 1. apply conditioning
+            # 1. apply conditioning 取特征图部分，预测部分删除了无效的图像预测内容
             trajectory[condition_mask] = condition_data[condition_mask]
 
             # 2. predict model output
@@ -207,6 +208,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 ).prev_sample
         
         # finally make sure conditioning is enforced
+        # 不是得到最新的动作+观测特征图，而是删除了无效的图像预测内容
         trajectory[condition_mask] = condition_data[condition_mask]        
 
         return trajectory
@@ -271,6 +273,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         end = start + self.n_action_steps
         action = action_pred[:,start:end]
         
+
         result = {
             'action': action,
             'action_pred': action_pred

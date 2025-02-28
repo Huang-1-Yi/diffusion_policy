@@ -1,4 +1,18 @@
 """
+
+使用方法：
+(robodiff)$ python demo_real_franka.py -o <演示保存目录> --robot_ip <franka的ip地址>
+机器人移动：
+移动您的SpaceMouse以移动机器人的末端执行器（锁定在xy平面）。
+按下SpaceMouse右键以解锁z轴。
+按下SpaceMouse左键以启用旋转轴。
+
+录制控制：
+点击opencv窗口（确保它是焦点）。
+按"C"开始录制。
+按"S"停止录制。
+按"Q"退出程序。
+按"退格键"删除先前录制的剧集。
 Usage:
 (robodiff)$ python demo_real_robot.py -o <demo_save_dir> --robot_ip <ip_of_ur5>
 

@@ -1,0 +1,182 @@
+_target_: diffusion_policy.workspace.train_diffusion_unet_hybrid_workspace.TrainDiffusionUnetHybridWorkspace # 指定训练Diffusion Unet混合工作区的目标类
+checkpoint: # 检查点配置
+  save_last_ckpt: true # 保存最后一个检查点
+  save_last_snapshot: false # 不保存最后一个快照
+  topk: # 保存最佳检查点配置
+    format_str: epoch={epoch:04d}-test_mean_score={test_mean_score:.3f}.ckpt # 检查点文件格式
+    k: 5 # 保存前k个最佳检查点
+    mode: max # 选择最大值模式
+    monitor_key: test_mean_score # 监控的关键指标是测试平均得分
+dataloader: # 数据加载器配置
+  batch_size: 64 # 每个批次的数据量
+  num_workers: 8 # 数据加载的工作进程数
+  persistent_workers: false # 是否持久化工作进程
+  pin_memory: true # 是否固定内存
+  shuffle: true # 是否打乱数据
+dataset_obs_steps: 2 # 数据集中观测步数
+ema: # EMA模型配置
+  _target_: diffusion_policy.model.diffusion.ema_model.EMAModel # 指定EMA模型的目标类
+  inv_gamma: 1.0 # 反伽马值
+  max_value: 0.9999 # EMA最大值
+  min_value: 0.0 # EMA最小值
+  power: 0.75 # EMA功率
+  update_after_step: 0 # 多少步后开始更新EMA
+exp_name: default # 实验名称
+horizon: 16 # 时间跨度
+keypoint_visible_rate: 1.0 # 关键点可见率
+logging: # 日志配置
+  group: null # 日志组
+  id: null # 日志ID
+  mode: online # 日志模式
+  name: 2023.01.16-20.20.06_train_diffusion_unet_hybrid_pusht_image # 日志名称
+  project: diffusion_policy_debug # 日志项目
+  resume: true # 是否恢复日志
+  tags: # 日志标签
+  - train_diffusion_unet_hybrid # 标签1
+  - pusht_image # 标签2
+  - default # 标签3
+multi_run: # 多次运行配置
+  run_dir: data/outputs/2023.01.16/20.20.06_train_diffusion_unet_hybrid_pusht_image # 运行目录
+  wandb_name_base: 2023.01.16-20.20.06_train_diffusion_unet_hybrid_pusht_image # WandB名称基础
+n_action_steps: 8 # 动作步数
+n_latency_steps: 0 # 延迟步数
+n_obs_steps: 2 # 观测步数
+name: train_diffusion_unet_hybrid # 训练名称
+obs_as_global_cond: true # 观测作为全局条件
+optimizer: # 优化器配置
+  _target_: torch.optim.AdamW # 指定AdamW优化器的目标类
+  betas: # AdamW的β参数
+  - 0.95 # β1
+  - 0.999 # β2
+  eps: 1.0e-08 # AdamW的epsilon参数
+  lr: 0.0001 # 学习率
+  weight_decay: 1.0e-06 # 权重衰减
+past_action_visible: false # 是否显示过去的动作
+policy: # 策略配置
+  _target_: diffusion_policy.policy.diffusion_unet_hybrid_image_policy.DiffusionUnetHybridImagePolicy # 指定Diffusion Unet混合图像策略的目标类
+  cond_predict_scale: true # 条件预测缩放
+  crop_shape: # 裁剪形状
+  - 84 # 高度
+  - 84 # 宽度
+  diffusion_step_embed_dim: 128 # 扩散步嵌入维度
+  down_dims: # 下采样维度
+  - 512 # 下采样维度1
+  - 1024 # 下采样维度2
+  - 2048 # 下采样维度3
+  eval_fixed_crop: true # 是否评估固定裁剪
+  horizon: 16 # 时间跨度
+  kernel_size: 5 # 核大小
+  n_action_steps: 8 # 动作步数
+  n_groups: 8 # 组数
+  n_obs_steps: 2 # 观测步数
+  noise_scheduler: # 噪声调度器配置
+    _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler # 指定DDPM调度器的目标类
+    beta_end: 0.02 # β结束值
+    beta_schedule: squaredcos_cap_v2 # β调度类型
+    beta_start: 0.0001 # β起始值
+    clip_sample: true # 是否裁剪样本
+    num_train_timesteps: 100 # 训练时间步数
+    prediction_type: epsilon # 预测类型
+    variance_type: fixed_small # 方差类型
+  num_inference_steps: 100 # 推理步数
+  obs_as_global_cond: true # 观测作为全局条件
+  obs_encoder_group_norm: true # 观测编码器组归一化
+  shape_meta: # 形状元数据
+    action: # 动作
+      shape: # 动作形状
+      - 2 # 动作维度
+    obs: # 观测
+      agent_pos:  # 代理位置
+        shape:    # 代理位置形状
+        - 2       # 位置维度
+        type: low_dim # 类型为低维度
+      image: # 图像
+        shape: # 图像形状
+        - 3 # 通道数
+        - 96 # 高度
+        - 96 # 宽度
+        type: rgb # 类型为RGB
+shape_meta: # 形状元数据
+  action: # 动作
+    shape: # 动作形状
+    - 2 # 动作维度
+  obs: # 观测
+    agent_pos: # 代理位置
+      shape: # 代理位置形状
+      - 2 # 位置维度
+      type: low_dim # 类型为低维度
+    image: # 图像
+      shape: # 图像形状
+      - 3 # 通道数
+      - 96 # 高度
+      - 96 # 宽度
+      type: rgb # 类型为RGB
+task: # 任务配置
+  dataset: # 数据集配置
+    _target_: diffusion_policy.dataset.pusht_image_dataset.PushTImageDataset # 指定PushT图像数据集的目标类
+    horizon: 16 # 时间跨度
+    max_train_episodes: 90 # 最大训练集数
+    pad_after: 7 # 后填充步数
+    pad_before: 1 # 前填充步数
+    seed: 42 # 随机种子
+    val_ratio: 0.02 # 验证集比例
+    zarr_path: data/pusht/pusht_cchi_v7_replay.zarr # Zarr数据路径
+  env_runner: # 环境运行器配置
+    _target_: diffusion_policy.env_runner.pusht_image_runner.PushTImageRunner # 指定PushT图像运行器的目标类
+    fps: 10 # 每秒帧数
+    legacy_test: true # 是否进行传统测试
+    max_steps: 300 # 最大步数
+    n_action_steps: 8 # 动作步数
+    n_envs: null # 环境数
+    n_obs_steps: 2 # 观测步数
+    n_test: 50 # 测试数量
+    n_test_vis: 4 # 可视化测试数量
+    n_train: 6 # 训练数量
+    n_train_vis: 2 # 可视化训练数量
+    past_action: false # 是否显示过去的动作
+    test_start_seed: 100000 # 测试起始随机种子
+    train_start_seed: 0 # 训练起始随机种子
+  image_shape: # 图像形状
+  - 3 # 通道数
+  - 96 # 高度
+  - 96 # 宽度
+  name: pusht_image # 任务名称
+  shape_meta: # 形状元数据
+    action: # 动作
+      shape: # 动作形状
+      - 2 # 动作维度
+    obs: # 观测
+      agent_pos: # 代理位置
+        shape: # 代理位置形状
+        - 2 # 位置维度
+        type: low_dim # 类型为低维度
+      image: # 图像
+        shape: # 图像形状
+        - 3 # 通道数
+        - 96 # 高度
+        - 96 # 宽度
+        type: rgb # 类型为RGB
+task_name: pusht_image # 任务名称
+training: # 训练配置
+  checkpoint_every: 50 # 每隔多少步保存一次检查点
+  debug: false # 是否启用调试模式
+  device: cuda:0 # 训练设备
+  gradient_accumulate_every: 1 # 梯度累积步数
+  lr_scheduler: cosine # 学习率调度器类型
+  lr_warmup_steps: 500 # 学习率预热步数
+  max_train_steps: null # 最大训练步数
+  max_val_steps: null # 最大验证步数
+  num_epochs: 3050 # 训练轮数
+  resume: true # 是否恢复训练
+  rollout_every: 50 # 每隔多少步进行一次rollout
+  sample_every: 5 # 每隔多少步进行一次采样
+  seed: 42 # 随机种子
+  tqdm_interval_sec: 1.0 # tqdm显示间隔秒数
+  use_ema: true # 是否使用EMA
+  val_every: 1 # 每隔多少步进行一次验证
+val_dataloader: # 验证数据加载器配置
+  batch_size: 64 # 每个批次的数据量
+  num_workers: 8 # 数据加载的工作进程数
+  persistent_workers: false # 是否持久化工作进程
+  pin_memory: true # 是否固定内存
+  shuffle: false # 是否打乱数据

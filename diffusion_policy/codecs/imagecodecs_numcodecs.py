@@ -36,56 +36,56 @@ __version__ = '2022.9.26'
 
 __all__ = ('register_codecs',)
 
-import numpy
-from numcodecs.abc import Codec
-from numcodecs.registry import register_codec, get_codec
+import numpy  # 导入numpy库
+from numcodecs.abc import Codec  # 从numcodecs.abc导入Codec类
+from numcodecs.registry import register_codec, get_codec  # 从numcodecs.registry导入register_codec和get_codec函数
 
-import imagecodecs
+import imagecodecs  # 导入imagecodecs库
+
 
 
 def protective_squeeze(x: numpy.ndarray):
     """
-    Squeeze dim only if it's not the last dim.
-    Image dim expected to be *, H, W, C
+    仅在不是最后一个维度时进行压缩。
+    图像维度期望为*, H, W, C。
     """
-    img_shape = x.shape[-3:]
-    if len(x.shape) > 3:
-        n_imgs = numpy.prod(x.shape[:-3])
-        if n_imgs > 1:
-            img_shape = (-1,) + img_shape
-    return x.reshape(img_shape)
+    img_shape = x.shape[-3:]  # 获取图像的最后三个维度
+    if len(x.shape) > 3:  # 如果维度超过3
+        n_imgs = numpy.prod(x.shape[:-3])  # 计算图像数量
+        if n_imgs > 1:  # 如果图像数量大于1
+            img_shape = (-1,) + img_shape  # 调整形状
+    return x.reshape(img_shape)  # 重新调整形状并返回
 
 def get_default_image_compressor(**kwargs):
     if imagecodecs.JPEGXL:
-        # has JPEGXL
+        # 如果支持JPEGXL
         this_kwargs = {
             'effort': 3,
             'distance': 0.3,
-            # bug in libjxl, invalid codestream for non-lossless
-            # when decoding speed > 1
+            # libjxl中的一个bug，当解码速度大于1时，非无损的情况下无效码流
             'decodingspeed': 1
         }
-        this_kwargs.update(kwargs)
-        return JpegXl(**this_kwargs)
+        this_kwargs.update(kwargs)  # 更新参数
+        return JpegXl(**this_kwargs)  # 返回JpegXl实例
     else:
         this_kwargs = {
             'level': 50
         }
-        this_kwargs.update(kwargs)
-        return Jpeg2k(**this_kwargs)
+        this_kwargs.update(kwargs)  # 更新参数
+        return Jpeg2k(**this_kwargs)  # 返回Jpeg2k实例
 
 class Aec(Codec):
-    """AEC codec for numcodecs."""
+    """AEC编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_aec'
 
     def __init__(
         self, bitspersample=None, flags=None, blocksize=None, rsi=None
     ):
-        self.bitspersample = bitspersample
-        self.flags = flags
-        self.blocksize = blocksize
-        self.rsi = rsi
+        self.bitspersample = bitspersample  # 位样本数
+        self.flags = flags  # 编码标志
+        self.blocksize = blocksize  # 块大小
+        self.rsi = rsi  # RSI参数
 
     def encode(self, buf):
         return imagecodecs.aec_encode(
@@ -94,7 +94,7 @@ class Aec(Codec):
             flags=self.flags,
             blocksize=self.blocksize,
             rsi=self.rsi,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.aec_decode(
@@ -104,34 +104,32 @@ class Aec(Codec):
             blocksize=self.blocksize,
             rsi=self.rsi,
             out=_flat(out),
-        )
-
+        )  # 解码并返回结果
 
 class Apng(Codec):
-    """APNG codec for numcodecs."""
+    """APNG编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_apng'
 
     def __init__(self, level=None, photometric=None, delay=None):
-        self.level = level
-        self.photometric = photometric
-        self.delay = delay
+        self.level = level  # 编码等级
+        self.photometric = photometric  # 光度参数
+        self.delay = delay  # 延迟参数
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.apng_encode(
             buf,
             level=self.level,
             photometric=self.photometric,
             delay=self.delay,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.apng_decode(buf, out=out)
-
+        return imagecodecs.apng_decode(buf, out=out)  # 解码并返回结果
 
 class Avif(Codec):
-    """AVIF codec for numcodecs."""
+    """AVIF编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_avif'
 
@@ -145,16 +143,16 @@ class Avif(Codec):
         numthreads=None,
         index=None,
     ):
-        self.level = level
-        self.speed = speed
-        self.tilelog2 = tilelog2
-        self.bitspersample = bitspersample
-        self.pixelformat = pixelformat
-        self.numthreads = numthreads
-        self.index = index
+        self.level = level  # 编码等级
+        self.speed = speed  # 编码速度
+        self.tilelog2 = tilelog2  # 瓦片参数
+        self.bitspersample = bitspersample  # 位样本数
+        self.pixelformat = pixelformat  # 像素格式
+        self.numthreads = numthreads  # 线程数
+        self.index = index  # 索引
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.avif_encode(
             buf,
             level=self.level,
@@ -163,39 +161,37 @@ class Avif(Codec):
             bitspersample=self.bitspersample,
             pixelformat=self.pixelformat,
             numthreads=self.numthreads,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.avif_decode(
             buf, index=self.index, numthreads=self.numthreads, out=out
-        )
-
+        )  # 解码并返回结果
 
 class Bitorder(Codec):
-    """Bitorder codec for numcodecs."""
+    """Bitorder编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_bitorder'
 
     def encode(self, buf):
-        return imagecodecs.bitorder_encode(buf)
+        return imagecodecs.bitorder_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.bitorder_decode(buf, out=_flat(out))
-
+        return imagecodecs.bitorder_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Bitshuffle(Codec):
-    """Bitshuffle codec for numcodecs."""
+    """Bitshuffle编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_bitshuffle'
 
     def __init__(self, itemsize=1, blocksize=0):
-        self.itemsize = itemsize
-        self.blocksize = blocksize
+        self.itemsize = itemsize  # 项目大小
+        self.blocksize = blocksize  # 块大小
 
     def encode(self, buf):
         return imagecodecs.bitshuffle_encode(
             buf, itemsize=self.itemsize, blocksize=self.blocksize
-        ).tobytes()
+        ).tobytes()  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.bitshuffle_decode(
@@ -203,11 +199,10 @@ class Bitshuffle(Codec):
             itemsize=self.itemsize,
             blocksize=self.blocksize,
             out=_flat(out),
-        )
-
+        )  # 解码并返回结果
 
 class Blosc(Codec):
-    """Blosc codec for numcodecs."""
+    """Blosc编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_blosc'
 
@@ -220,15 +215,15 @@ class Blosc(Codec):
         shuffle=None,
         numthreads=None,
     ):
-        self.level = level
-        self.compressor = compressor
-        self.typesize = typesize
-        self.blocksize = blocksize
-        self.shuffle = shuffle
-        self.numthreads = numthreads
+        self.level = level  # 编码等级
+        self.compressor = compressor  # 压缩器类型
+        self.typesize = typesize  # 类型大小
+        self.blocksize = blocksize  # 块大小
+        self.shuffle = shuffle  # shuffle参数
+        self.numthreads = numthreads  # 线程数
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.blosc_encode(
             buf,
             level=self.level,
@@ -237,16 +232,15 @@ class Blosc(Codec):
             blocksize=self.blocksize,
             shuffle=self.shuffle,
             numthreads=self.numthreads,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.blosc_decode(
             buf, numthreads=self.numthreads, out=_flat(out)
-        )
-
+        )  # 解码并返回结果
 
 class Blosc2(Codec):
-    """Blosc2 codec for numcodecs."""
+    """Blosc2编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_blosc2'
 
@@ -259,15 +253,15 @@ class Blosc2(Codec):
         shuffle=None,
         numthreads=None,
     ):
-        self.level = level
-        self.compressor = compressor
-        self.typesize = typesize
-        self.blocksize = blocksize
-        self.shuffle = shuffle
-        self.numthreads = numthreads
+        self.level = level  # 编码等级
+        self.compressor = compressor  # 压缩器类型
+        self.typesize = typesize  # 类型大小
+        self.blocksize = blocksize  # 块大小
+        self.shuffle = shuffle  # shuffle参数
+        self.numthreads = numthreads  # 线程数
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.blosc2_encode(
             buf,
             level=self.level,
@@ -276,63 +270,63 @@ class Blosc2(Codec):
             blocksize=self.blocksize,
             shuffle=self.shuffle,
             numthreads=self.numthreads,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.blosc2_decode(
             buf, numthreads=self.numthreads, out=_flat(out)
-        )
+        )  # 解码并返回结果
+
 
 
 class Brotli(Codec):
-    """Brotli codec for numcodecs."""
+    """Brotli编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_brotli'
 
     def __init__(self, level=None, mode=None, lgwin=None):
-        self.level = level
-        self.mode = mode
-        self.lgwin = lgwin
+        self.level = level  # 编码等级
+        self.mode = mode  # 编码模式
+        self.lgwin = lgwin  # 窗口大小
 
     def encode(self, buf):
         return imagecodecs.brotli_encode(
             buf, level=self.level, mode=self.mode, lgwin=self.lgwin
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.brotli_decode(buf, out=_flat(out))
-
+        return imagecodecs.brotli_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class ByteShuffle(Codec):
-    """ByteShuffle codec for numcodecs."""
+    """ByteShuffle编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_byteshuffle'
 
     def __init__(
         self, shape, dtype, axis=-1, dist=1, delta=False, reorder=False
     ):
-        self.shape = tuple(shape)
-        self.dtype = numpy.dtype(dtype).str
-        self.axis = axis
-        self.dist = dist
-        self.delta = bool(delta)
-        self.reorder = bool(reorder)
+        self.shape = tuple(shape)  # 形状
+        self.dtype = numpy.dtype(dtype).str  # 数据类型
+        self.axis = axis  # 轴
+        self.dist = dist  # 距离
+        self.delta = bool(delta)  # 是否使用delta
+        self.reorder = bool(reorder)  # 是否重新排序
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        assert buf.shape == self.shape
-        assert buf.dtype == self.dtype
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        assert buf.shape == self.shape  # 确保形状匹配
+        assert buf.dtype == self.dtype  # 确保数据类型匹配
         return imagecodecs.byteshuffle_encode(
             buf,
             axis=self.axis,
             dist=self.dist,
             delta=self.delta,
             reorder=self.reorder,
-        ).tobytes()
+        ).tobytes()  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if not isinstance(buf, numpy.ndarray):
-            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)
+            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)  # 重新调整形状
         return imagecodecs.byteshuffle_decode(
             buf,
             axis=self.axis,
@@ -340,26 +334,24 @@ class ByteShuffle(Codec):
             delta=self.delta,
             reorder=self.reorder,
             out=out,
-        )
-
+        )  # 解码并返回结果
 
 class Bz2(Codec):
-    """Bz2 codec for numcodecs."""
+    """Bz2编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_bz2'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        return imagecodecs.bz2_encode(buf, level=self.level)
+        return imagecodecs.bz2_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.bz2_decode(buf, out=_flat(out))
-
+        return imagecodecs.bz2_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Cms(Codec):
-    """CMS codec for numcodecs."""
+    """CMS编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_cms'
 
@@ -367,121 +359,115 @@ class Cms(Codec):
         pass
 
     def encode(self, buf, out=None):
-        # return imagecodecs.cms_transform(buf)
-        raise NotImplementedError
+        # 返回imagecodecs.cms_transform(buf)
+        raise NotImplementedError  # 尚未实现
 
     def decode(self, buf, out=None):
-        # return imagecodecs.cms_transform(buf)
-        raise NotImplementedError
-
+        # 返回imagecodecs.cms_transform(buf)
+        raise NotImplementedError  # 尚未实现
 
 class Deflate(Codec):
-    """Deflate codec for numcodecs."""
+    """Deflate编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_deflate'
 
     def __init__(self, level=None, raw=False):
-        self.level = level
-        self.raw = bool(raw)
+        self.level = level  # 编码等级
+        self.raw = bool(raw)  # 是否为原始数据
 
     def encode(self, buf):
-        return imagecodecs.deflate_encode(buf, level=self.level, raw=self.raw)
+        return imagecodecs.deflate_encode(buf, level=self.level, raw=self.raw)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.deflate_decode(buf, out=_flat(out), raw=self.raw)
-
+        return imagecodecs.deflate_decode(buf, out=_flat(out), raw=self.raw)  # 解码并返回结果
 
 class Delta(Codec):
-    """Delta codec for numcodecs."""
+    """Delta编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_delta'
 
     def __init__(self, shape=None, dtype=None, axis=-1, dist=1):
-        self.shape = None if shape is None else tuple(shape)
-        self.dtype = None if dtype is None else numpy.dtype(dtype).str
-        self.axis = axis
-        self.dist = dist
+        self.shape = None if shape is None else tuple(shape)  # 形状
+        self.dtype = None if dtype is None else numpy.dtype(dtype).str  # 数据类型
+        self.axis = axis  # 轴
+        self.dist = dist  # 距离
 
     def encode(self, buf):
         if self.shape is not None or self.dtype is not None:
-            buf = protective_squeeze(numpy.asarray(buf))
-            assert buf.shape == self.shape
-            assert buf.dtype == self.dtype
+            buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+            assert buf.shape == self.shape  # 确保形状匹配
+            assert buf.dtype == self.dtype  # 确保数据类型匹配
         return imagecodecs.delta_encode(
             buf, axis=self.axis, dist=self.dist
-        ).tobytes()
+        ).tobytes()  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if self.shape is not None or self.dtype is not None:
-            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)
+            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)  # 重新调整形状
         return imagecodecs.delta_decode(
             buf, axis=self.axis, dist=self.dist, out=out
-        )
-
+        )  # 解码并返回结果
 
 class Float24(Codec):
-    """Float24 codec for numcodecs."""
+    """Float24编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_float24'
 
     def __init__(self, byteorder=None, rounding=None):
-        self.byteorder = byteorder
-        self.rounding = rounding
+        self.byteorder = byteorder  # 字节顺序
+        self.rounding = rounding  # 四舍五入
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.float24_encode(
             buf, byteorder=self.byteorder, rounding=self.rounding
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.float24_decode(
             buf, byteorder=self.byteorder, out=out
-        )
-
+        )  # 解码并返回结果
 
 class FloatPred(Codec):
-    """Floating Point Predictor codec for numcodecs."""
+    """浮点预测编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_floatpred'
 
     def __init__(self, shape, dtype, axis=-1, dist=1):
-        self.shape = tuple(shape)
-        self.dtype = numpy.dtype(dtype).str
-        self.axis = axis
-        self.dist = dist
+        self.shape = tuple(shape)  # 形状
+        self.dtype = numpy.dtype(dtype).str  # 数据类型
+        self.axis = axis  # 轴
+        self.dist = dist  # 距离
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        assert buf.shape == self.shape
-        assert buf.dtype == self.dtype
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        assert buf.shape == self.shape  # 确保形状匹配
+        assert buf.dtype == self.dtype  # 确保数据类型匹配
         return imagecodecs.floatpred_encode(
             buf, axis=self.axis, dist=self.dist
-        ).tobytes()
+        ).tobytes()  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if not isinstance(buf, numpy.ndarray):
-            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)
+            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)  # 重新调整形状
         return imagecodecs.floatpred_decode(
             buf, axis=self.axis, dist=self.dist, out=out
-        )
-
+        )  # 解码并返回结果
 
 class Gif(Codec):
-    """GIF codec for numcodecs."""
+    """GIF编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_gif'
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.gif_encode(buf)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.gif_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.gif_decode(buf, asrgb=False, out=out)
-
+        return imagecodecs.gif_decode(buf, asrgb=False, out=out)  # 解码并返回结果
 
 class Heif(Codec):
-    """HEIF codec for numcodecs."""
+    """HEIF编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_heif'
 
@@ -494,15 +480,15 @@ class Heif(Codec):
         numthreads=None,
         index=None,
     ):
-        self.level = level
-        self.bitspersample = bitspersample
-        self.photometric = photometric
-        self.compression = compression
-        self.numthreads = numthreads
-        self.index = index
+        self.level = level  # 编码等级
+        self.bitspersample = bitspersample  # 位样本数
+        self.photometric = photometric  # 光度参数
+        self.compression = compression  # 压缩参数
+        self.numthreads = numthreads  # 线程数
+        self.index = index  # 索引
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.heif_encode(
             buf,
             level=self.level,
@@ -510,7 +496,7 @@ class Heif(Codec):
             photometric=self.photometric,
             compression=self.compression,
             numthreads=self.numthreads,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.heif_decode(
@@ -519,11 +505,11 @@ class Heif(Codec):
             photometric=self.photometric,
             numthreads=self.numthreads,
             out=out,
-        )
+        )  # 解码并返回结果
 
 
 class Jetraw(Codec):
-    """Jetraw codec for numcodecs."""
+    """Jetraw编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_jetraw'
 
@@ -535,24 +521,23 @@ class Jetraw(Codec):
         verbosity=None,
         errorbound=None,
     ):
-        self.shape = shape
-        self.identifier = identifier
-        self.errorbound = errorbound
-        imagecodecs.jetraw_init(parameters, verbosity)
+        self.shape = shape  # 形状
+        self.identifier = identifier  # 标识符
+        self.errorbound = errorbound  # 错误界限
+        imagecodecs.jetraw_init(parameters, verbosity)  # 初始化Jetraw
 
     def encode(self, buf):
         return imagecodecs.jetraw_encode(
             buf, identifier=self.identifier, errorbound=self.errorbound
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if out is None:
-            out = numpy.empty(self.shape, numpy.uint16)
-        return imagecodecs.jetraw_decode(buf, out=out)
-
+            out = numpy.empty(self.shape, numpy.uint16)  # 创建空数组
+        return imagecodecs.jetraw_decode(buf, out=out)  # 解码并返回结果
 
 class Jpeg(Codec):
-    """JPEG codec for numcodecs."""
+    """JPEG编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_jpeg'
 
@@ -568,18 +553,18 @@ class Jpeg(Codec):
         optimize=None,
         smoothing=None,
     ):
-        self.tables = tables
-        self.header = header
-        self.bitspersample = bitspersample
-        self.colorspace_data = colorspace_data
-        self.colorspace_jpeg = colorspace_jpeg
-        self.level = level
-        self.subsampling = subsampling
-        self.optimize = optimize
-        self.smoothing = smoothing
+        self.tables = tables  # 表
+        self.header = header  # 头部
+        self.bitspersample = bitspersample  # 位样本数
+        self.colorspace_data = colorspace_data  # 数据颜色空间
+        self.colorspace_jpeg = colorspace_jpeg  # JPEG颜色空间
+        self.level = level  # 编码等级
+        self.subsampling = subsampling  # 采样
+        self.optimize = optimize  # 优化参数
+        self.smoothing = smoothing  # 平滑参数
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.jpeg_encode(
             buf,
             level=self.level,
@@ -588,13 +573,13 @@ class Jpeg(Codec):
             subsampling=self.subsampling,
             optimize=self.optimize,
             smoothing=self.smoothing,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         out_shape = None
         if out is not None:
-            out_shape = out.shape
-            out = protective_squeeze(out)
+            out_shape = out.shape  # 获取输出形状
+            out = protective_squeeze(out)  # 压缩输出
         img = imagecodecs.jpeg_decode(
             buf,
             bitspersample=self.bitspersample,
@@ -603,38 +588,37 @@ class Jpeg(Codec):
             colorspace=self.colorspace_jpeg,
             outcolorspace=self.colorspace_data,
             out=out,
-        )
+        )  # 解码图像
         if out_shape is not None:
-            img = img.reshape(out_shape)
-        return img
+            img = img.reshape(out_shape)  # 重新调整形状
+        return img  # 返回图像
 
     def get_config(self):
-        """Return dictionary holding configuration parameters."""
-        config = dict(id=self.codec_id)
+        """返回包含配置参数的字典。"""
+        config = dict(id=self.codec_id)  # 创建配置字典
         for key in self.__dict__:
             if not key.startswith('_'):
                 value = getattr(self, key)
                 if value is not None and key in ('header', 'tables'):
                     import base64
 
-                    value = base64.b64encode(value).decode()
+                    value = base64.b64encode(value).decode()  # 进行Base64编码
                 config[key] = value
-        return config
+        return config  # 返回配置字典
 
     @classmethod
     def from_config(cls, config):
-        """Instantiate codec from configuration object."""
+        """从配置对象实例化编解码器。"""
         for key in ('header', 'tables'):
             value = config.get(key, None)
             if value is not None and isinstance(value, str):
                 import base64
 
-                config[key] = base64.b64decode(value.encode())
-        return cls(**config)
-
+                config[key] = base64.b64decode(value.encode())  # 进行Base64解码
+        return cls(**config)  # 返回实例
 
 class Jpeg2k(Codec):
-    """JPEG 2000 codec for numcodecs."""
+    """JPEG 2000编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_jpeg2k'
 
@@ -650,18 +634,18 @@ class Jpeg2k(Codec):
         numthreads=None,
         verbose=0,
     ):
-        self.level = level
-        self.codecformat = codecformat
-        self.colorspace = colorspace
-        self.tile = None if tile is None else tuple(tile)
-        self.reversible = reversible
-        self.bitspersample = bitspersample
-        self.resolutions = resolutions
-        self.numthreads = numthreads
-        self.verbose = verbose
+        self.level = level  # 编码等级
+        self.codecformat = codecformat  # 编解码格式
+        self.colorspace = colorspace  # 颜色空间
+        self.tile = None if tile is None else tuple(tile)  # 瓦片
+        self.reversible = reversible  # 是否可逆
+        self.bitspersample = bitspersample  # 位样本数
+        self.resolutions = resolutions  # 分辨率
+        self.numthreads = numthreads  # 线程数
+        self.verbose = verbose  # 详细程度
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.jpeg2k_encode(
             buf,
             level=self.level,
@@ -673,38 +657,36 @@ class Jpeg2k(Codec):
             resolutions=self.resolutions,
             numthreads=self.numthreads,
             verbose=self.verbose,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.jpeg2k_decode(
             buf, verbose=self.verbose, numthreads=self.numthreads, out=out
-        )
-
+        )  # 解码并返回结果
 
 class JpegLs(Codec):
-    """JPEG LS codec for numcodecs."""
+    """JPEG LS编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_jpegls'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.jpegls_encode(buf, level=self.level)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.jpegls_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.jpegls_decode(buf, out=out)
-
+        return imagecodecs.jpegls_decode(buf, out=out)  # 解码并返回结果
 
 class JpegXl(Codec):
-    """JPEG XL codec for numcodecs."""
+    """JPEG XL编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_jpegxl'
 
     def __init__(
         self,
-        # encode
+        # 编码参数
         level=None,
         effort=None,
         distance=None,
@@ -713,114 +695,82 @@ class JpegXl(Codec):
         photometric=None,
         planar=None,
         usecontainer=None,
-        # decode
+        # 解码参数
         index=None,
         keeporientation=None,
-        # both
+        # 通用参数
         numthreads=None,
     ):
         """
-        Return JPEG XL image from numpy array.
-        Float must be in nominal range 0..1.
+        从numpy数组返回JPEG XL图像。
+        浮点数必须在0到1的标称范围内。
 
-        Currently L, LA, RGB, RGBA images are supported in contig mode.
-        Extra channels are only supported for grayscale images in planar mode.
-        
-        Parameters
+        当前支持L, LA, RGB, RGBA图像。
+        仅在平面模式下支持灰度图像的额外通道。
+
+        参数
         ----------
-        level : Default to None, i.e. not overwriting lossess and decodingspeed options.
-            When < 0: Use lossless compression
-            When in [0,1,2,3,4]: Sets the decoding speed tier for the provided options. 
-                Minimum is 0 (slowest to decode, best quality/density), and maximum 
-                is 4 (fastest to decode, at the cost of some quality/density).
-        effort : Default to 3.
-            Sets encoder effort/speed level without affecting decoding speed. 
-            Valid values are, from faster to slower speed: 1:lightning 2:thunder 
-                3:falcon 4:cheetah 5:hare 6:wombat 7:squirrel 8:kitten 9:tortoise. 
-            Speed: lightning, thunder, falcon, cheetah, hare, wombat, squirrel, kitten, tortoise 
-            control the encoder effort in ascending order. 
-            This also affects memory usage: using lower effort will typically reduce memory 
-            consumption during encoding.
-            lightning and thunder are fast modes useful for lossless mode (modular).
-            falcon disables all of the following tools.
-            cheetah enables coefficient reordering, context clustering, and heuristics for selecting DCT sizes and quantization steps.
-            hare enables Gaborish filtering, chroma from luma, and an initial estimate of quantization steps.
-            wombat enables error diffusion quantization and full DCT size selection heuristics.
-            squirrel (default) enables dots, patches, and spline detection, and full context clustering.
-            kitten optimizes the adaptive quantization for a psychovisual metric.
-            tortoise enables a more thorough adaptive quantization search.
-        distance : Default to 1.0
-            Sets the distance level for lossy compression: target max butteraugli distance, 
-            lower = higher quality. Range: 0 .. 15. 0.0 = mathematically lossless 
-            (however, use JxlEncoderSetFrameLossless instead to use true lossless, 
-            as setting distance to 0 alone is not the only requirement). 
-            1.0 = visually lossless. Recommended range: 0.5 .. 3.0.
-        lossess : Default to False. 
-            Use lossess encoding.
-        decodingspeed : Default to 0.
-            Duplicate to level. [0,4]
-        photometric : Return JxlColorSpace value. 
-            Default logic is quite complicated but works most of the time.
-            Accepted value:
+        level : 默认为None，即不覆盖lossess和decodingspeed选项。
+            当< 0时：使用无损压缩
+            当在[0,1,2,3,4]之间时：设置提供选项的解码速度级别。最小值为0（解码速度最慢，质量/密度最佳），最大值为4（解码速度最快，以某些质量/密度为代价）。
+        effort : 默认为3。
+            设置编码器努力/速度级别，不影响解码速度。有效值为，从快到慢：1:lightning 2:thunder 3:falcon 4:cheetah 5:hare 6:wombat 7:squirrel 8:kitten 9:tortoise。
+            速度：lightning, thunder, falcon, cheetah, hare, wombat, squirrel, kitten, tortoise 控制编码器的努力按升序。
+            这也会影响内存使用：使用较低的努力通常会减少编码期间的内存消耗。
+            lightning和thunder是用于无损模式（模块化）的快速模式。
+            falcon禁用以下所有工具。
+            cheetah启用系数重新排序、上下文聚类和用于选择DCT大小和量化步骤的启发式方法。
+            hare启用Gaborish滤波、来自luma的色度和量化步骤的初步估计。
+            wombat启用误差扩散量化和完整的DCT大小选择启发式方法。
+            squirrel（默认）启用点、补丁和样条检测以及完整的上下文聚类。
+            kitten优化了自适应量化以适应心理视觉度量。
+            tortoise启用更彻底的自适应量化搜索。
+        distance : 默认为1.0
+            设置有损压缩的距离级别：目标最大butteraugli距离，值越低质量越高。范围：0 .. 15。0.0 = 数学无损（但是，使用JxlEncoderSetFrameLossless而不是单独设置距离为0是使用真正无损的要求）。1.0 = 视觉无损。推荐范围：0.5 .. 3.0。
+        lossess : 默认为False。
+            使用无损编码。
+        decodingspeed : 默认为0。
+            复制到level。 [0,4]
+        photometric : 返回JxlColorSpace值。
+            默认逻辑非常复杂，但大多数时候有效。
+            接受的值：
                 int: [-1,3]
-                str: ['RGB', 
-                    'WHITEISZERO', 'MINISWHITE', 
-                    'BLACKISZERO', 'MINISBLACK', 'GRAY',
-                    'XYB', 'KNOWN']
-        planar : Enable multi-channel mode.
-            Default to false.
-        usecontainer : 
-            Forces the encoder to use the box-based container format (BMFF) 
-            even when not necessary.
-            When using JxlEncoderUseBoxes, JxlEncoderStoreJPEGMetadata or 
-            JxlEncoderSetCodestreamLevel with level 10, the encoder will 
-            automatically also use the container format, it is not necessary 
-            to use JxlEncoderUseContainer for those use cases.
-            By default this setting is disabled.
-        index : Selectively decode frames for animation.
-            Default to 0, decode all frames.
-            When set to > 0, decode that frame index only.
-        keeporientation : 
-            Enables or disables preserving of as-in-bitstream pixeldata orientation. 
-            Some images are encoded with an Orientation tag indicating that the 
-            decoder must perform a rotation and/or mirroring to the encoded image data.
+                str: ['RGB', 'WHITEISZERO', 'MINISWHITE', 'BLACKISZERO', 'MINISBLACK', 'GRAY', 'XYB', 'KNOWN']
+        planar : 启用多通道模式。
+            默认为false。
+        usecontainer : 强制编码器使用基于盒的容器格式（BMFF），即使不必要。
+            使用JxlEncoderUseBoxes、JxlEncoderStoreJPEGMetadata或使用级别10的JxlEncoderSetCodestreamLevel时，编码器将自动使用容器格式，不需要使用JxlEncoderUseContainer。
+            默认情况下，此设置被禁用。
+        index : 选择性解码动画帧。
+            默认为0，解码所有帧。
+            当设置为> 0时，仅解码该帧索引。
+        keeporientation : 启用或禁用保留按位流像素数据方向。
+            某些图像使用Orientation标记进行编码，指示解码器必须对编码图像数据进行旋转和/或镜像。
 
-            If skip_reorientation is JXL_FALSE (the default): the decoder will apply 
-            the transformation from the orientation setting, hence rendering the image 
-            according to its specified intent. When producing a JxlBasicInfo, the decoder 
-            will always set the orientation field to JXL_ORIENT_IDENTITY (matching the 
-            returned pixel data) and also align xsize and ysize so that they correspond 
-            to the width and the height of the returned pixel data.
+            如果skip_reorientation为JXL_FALSE（默认值）：解码器将应用方向设置的转换，从而根据其指定的意图渲染图像。生成JxlBasicInfo时，解码器将始终将方向字段设置为JXL_ORIENT_IDENTITY（与返回的像素数据匹配），并对xsize和ysize进行对齐，使它们对应于返回的像素数据的宽度和高度。
 
-            If skip_reorientation is JXL_TRUE: the decoder will skip applying the 
-            transformation from the orientation setting, returning the image in 
-            the as-in-bitstream pixeldata orientation. This may be faster to decode 
-            since the decoder doesnt have to apply the transformation, but can 
-            cause wrong display of the image if the orientation tag is not correctly 
-            taken into account by the user.
+            如果skip_reorientation为JXL_TRUE：解码器将跳过应用方向设置的转换，返回按位流像素数据方向的图像。这可能更快地解码，因为解码器不必应用转换，但如果用户没有正确考虑方向标记，可能会导致图像显示错误。
 
-            By default, this option is disabled, and the returned pixel data is 
-            re-oriented according to the images Orientation setting.
-        threads : Default to 1.
-            If <= 0, use all cores.
-            If > 32, clipped to 32.
+            默认情况下，此选项被禁用，并且返回的像素数据将根据图像的Orientation设置重新定向。
+        threads : 默认为1。
+            如果<= 0，使用所有内核。
+            如果> 32，则限制为32。
         """
 
-        self.level = level
-        self.effort = effort
-        self.distance = distance
-        self.lossless = bool(lossless)
-        self.decodingspeed = decodingspeed
-        self.photometric = photometric
-        self.planar = planar
-        self.usecontainer = usecontainer
-        self.index = index
-        self.keeporientation = keeporientation
-        self.numthreads = numthreads
+        self.level = level  # 编码等级
+        self.effort = effort  # 努力级别
+        self.distance = distance  # 距离级别
+        self.lossless = bool(lossless)  # 是否无损
+        self.decodingspeed = decodingspeed  # 解码速度
+        self.photometric = photometric  # 光度参数
+        self.planar = planar  # 平面模式
+        self.usecontainer = usecontainer  # 使用容器格式
+        self.index = index  # 索引
+        self.keeporientation = keeporientation  # 保持方向
+        self.numthreads = numthreads  # 线程数
 
     def encode(self, buf):
-        # TODO: only squeeze all but last dim
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.jpegxl_encode(
             buf,
             level=self.level,
@@ -832,7 +782,7 @@ class JpegXl(Codec):
             planar=self.planar,
             usecontainer=self.usecontainer,
             numthreads=self.numthreads,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.jpegxl_decode(
@@ -841,11 +791,12 @@ class JpegXl(Codec):
             keeporientation=self.keeporientation,
             numthreads=self.numthreads,
             out=out,
-        )
+        )  # 解码并返回结果
+
 
 
 class JpegXr(Codec):
-    """JPEG XR codec for numcodecs."""
+    """JPEG XR编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_jpegxr'
 
@@ -857,88 +808,84 @@ class JpegXr(Codec):
         resolution=None,
         fp2int=None,
     ):
-        self.level = level
-        self.photometric = photometric
-        self.hasalpha = hasalpha
-        self.resolution = resolution
-        self.fp2int = fp2int
+        self.level = level  # 编码等级
+        self.photometric = photometric  # 光度参数
+        self.hasalpha = hasalpha  # 是否有Alpha通道
+        self.resolution = resolution  # 分辨率
+        self.fp2int = fp2int  # 浮点到整数
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.jpegxr_encode(
             buf,
             level=self.level,
             photometric=self.photometric,
             hasalpha=self.hasalpha,
             resolution=self.resolution,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.jpegxr_decode(buf, fp2int=self.fp2int, out=out)
-
+        return imagecodecs.jpegxr_decode(buf, fp2int=self.fp2int, out=out)  # 解码并返回结果
 
 class Lerc(Codec):
-    """LERC codec for numcodecs."""
+    """LERC编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_lerc'
 
     def __init__(self, level=None, version=None, planar=None):
-        self.level = level
-        self.version = version
-        self.planar = bool(planar)
-        # TODO: support mask?
+        self.level = level  # 编码等级
+        self.version = version  # 版本
+        self.planar = bool(planar)  # 是否平面模式
+        # TODO: 支持mask
         # self.mask = None
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.lerc_encode(
             buf,
             level=self.level,
             version=self.version,
             planar=self.planar,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.lerc_decode(buf, out=out)
-
+        return imagecodecs.lerc_decode(buf, out=out)  # 解码并返回结果
 
 class Ljpeg(Codec):
-    """LJPEG codec for numcodecs."""
+    """LJPEG编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_ljpeg'
 
     def __init__(self, bitspersample=None):
-        self.bitspersample = bitspersample
+        self.bitspersample = bitspersample  # 位样本数
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.ljpeg_encode(buf, bitspersample=self.bitspersample)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.ljpeg_encode(buf, bitspersample=self.bitspersample)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.ljpeg_decode(buf, out=out)
-
+        return imagecodecs.ljpeg_decode(buf, out=out)  # 解码并返回结果
 
 class Lz4(Codec):
-    """LZ4 codec for numcodecs."""
+    """LZ4编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_lz4'
 
     def __init__(self, level=None, hc=False, header=True):
-        self.level = level
-        self.hc = hc
-        self.header = bool(header)
+        self.level = level  # 编码等级
+        self.hc = hc  # 高压缩模式
+        self.header = bool(header)  # 是否包含头部
 
     def encode(self, buf):
         return imagecodecs.lz4_encode(
             buf, level=self.level, hc=self.hc, header=self.header
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.lz4_decode(buf, header=self.header, out=_flat(out))
-
+        return imagecodecs.lz4_decode(buf, header=self.header, out=_flat(out))  # 解码并返回结果
 
 class Lz4f(Codec):
-    """LZ4F codec for numcodecs."""
+    """LZ4F编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_lz4f'
 
@@ -949,10 +896,10 @@ class Lz4f(Codec):
         contentchecksum=None,
         blockchecksum=None,
     ):
-        self.level = level
-        self.blocksizeid = blocksizeid
-        self.contentchecksum = contentchecksum
-        self.blockchecksum = blockchecksum
+        self.level = level  # 编码等级
+        self.blocksizeid = blocksizeid  # 块大小ID
+        self.contentchecksum = contentchecksum  # 内容校验和
+        self.blockchecksum = blockchecksum  # 块校验和
 
     def encode(self, buf):
         return imagecodecs.lz4f_encode(
@@ -961,107 +908,102 @@ class Lz4f(Codec):
             blocksizeid=self.blocksizeid,
             contentchecksum=self.contentchecksum,
             blockchecksum=self.blockchecksum,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.lz4f_decode(buf, out=_flat(out))
-
+        return imagecodecs.lz4f_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Lzf(Codec):
-    """LZF codec for numcodecs."""
+    """LZF编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_lzf'
 
     def __init__(self, header=True):
-        self.header = bool(header)
+        self.header = bool(header)  # 是否包含头部
 
     def encode(self, buf):
-        return imagecodecs.lzf_encode(buf, header=self.header)
+        return imagecodecs.lzf_encode(buf, header=self.header)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.lzf_decode(buf, header=self.header, out=_flat(out))
-
+        return imagecodecs.lzf_decode(buf, header=self.header, out=_flat(out))  # 解码并返回结果
 
 class Lzma(Codec):
-    """LZMA codec for numcodecs."""
+    """LZMA编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_lzma'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        return imagecodecs.lzma_encode(buf, level=self.level)
+        return imagecodecs.lzma_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.lzma_decode(buf, out=_flat(out))
-
+        return imagecodecs.lzma_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Lzw(Codec):
-    """LZW codec for numcodecs."""
+    """LZW编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_lzw'
 
     def encode(self, buf):
-        return imagecodecs.lzw_encode(buf)
+        return imagecodecs.lzw_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.lzw_decode(buf, out=_flat(out))
+        return imagecodecs.lzw_decode(buf, out=_flat(out))  # 解码并返回结果
+
 
 
 class PackBits(Codec):
-    """PackBits codec for numcodecs."""
+    """PackBits编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_packbits'
 
     def __init__(self, axis=None):
-        self.axis = axis
+        self.axis = axis  # 轴
 
     def encode(self, buf):
         if not isinstance(buf, (bytes, bytearray)):
-            buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.packbits_encode(buf, axis=self.axis)
+            buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.packbits_encode(buf, axis=self.axis)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.packbits_decode(buf, out=_flat(out))
-
+        return imagecodecs.packbits_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Pglz(Codec):
-    """PGLZ codec for numcodecs."""
+    """PGLZ编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_pglz'
 
     def __init__(self, header=True, strategy=None):
-        self.header = bool(header)
-        self.strategy = strategy
+        self.header = bool(header)  # 是否包含头部
+        self.strategy = strategy  # 策略
 
     def encode(self, buf):
         return imagecodecs.pglz_encode(
             buf, strategy=self.strategy, header=self.header
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.pglz_decode(buf, header=self.header, out=_flat(out))
-
+        return imagecodecs.pglz_decode(buf, header=self.header, out=_flat(out))  # 解码并返回结果
 
 class Png(Codec):
-    """PNG codec for numcodecs."""
+    """PNG编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_png'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.png_encode(buf, level=self.level)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.png_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.png_decode(buf, out=out)
-
+        return imagecodecs.png_decode(buf, out=out)  # 解码并返回结果
 
 class Qoi(Codec):
-    """QOI codec for numcodecs."""
+    """QOI编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_qoi'
 
@@ -1069,51 +1011,49 @@ class Qoi(Codec):
         pass
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.qoi_encode(buf)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.qoi_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.qoi_decode(buf, out=out)
-
+        return imagecodecs.qoi_decode(buf, out=out)  # 解码并返回结果
 
 class Rgbe(Codec):
-    """RGBE codec for numcodecs."""
+    """RGBE编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_rgbe'
 
     def __init__(self, header=False, shape=None, rle=None):
         if not header and shape is None:
-            raise ValueError('must specify data shape if no header')
+            raise ValueError('must specify data shape if no header')  # 如果没有头部且没有指定形状，则引发错误
         if shape and shape[-1] != 3:
-            raise ValueError('invalid shape')
-        self.shape = shape
-        self.header = bool(header)
-        self.rle = None if rle is None else bool(rle)
+            raise ValueError('invalid shape')  # 如果形状无效，则引发错误
+        self.shape = shape  # 形状
+        self.header = bool(header)  # 是否包含头部
+        self.rle = None if rle is None else bool(rle)  # 是否使用RLE
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.rgbe_encode(buf, header=self.header, rle=self.rle)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.rgbe_encode(buf, header=self.header, rle=self.rle)  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if out is None and not self.header:
-            out = numpy.empty(self.shape, numpy.float32)
+            out = numpy.empty(self.shape, numpy.float32)  # 创建空数组
         return imagecodecs.rgbe_decode(
             buf, header=self.header, rle=self.rle, out=out
-        )
-
+        )  # 解码并返回结果
 
 class Rcomp(Codec):
-    """Rcomp codec for numcodecs."""
+    """Rcomp编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_rcomp'
 
     def __init__(self, shape, dtype, nblock=None):
-        self.shape = tuple(shape)
-        self.dtype = numpy.dtype(dtype).str
-        self.nblock = nblock
+        self.shape = tuple(shape)  # 形状
+        self.dtype = numpy.dtype(dtype).str  # 数据类型
+        self.nblock = nblock  # 块数
 
     def encode(self, buf):
-        return imagecodecs.rcomp_encode(buf, nblock=self.nblock)
+        return imagecodecs.rcomp_encode(buf, nblock=self.nblock)  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.rcomp_decode(
@@ -1122,51 +1062,48 @@ class Rcomp(Codec):
             dtype=self.dtype,
             nblock=self.nblock,
             out=out,
-        )
-
+        )  # 解码并返回结果
 
 class Snappy(Codec):
-    """Snappy codec for numcodecs."""
+    """Snappy编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_snappy'
 
     def encode(self, buf):
-        return imagecodecs.snappy_encode(buf)
+        return imagecodecs.snappy_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.snappy_decode(buf, out=_flat(out))
-
+        return imagecodecs.snappy_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Spng(Codec):
-    """SPNG codec for numcodecs."""
+    """SPNG编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_spng'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.spng_encode(buf, level=self.level)
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.spng_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.spng_decode(buf, out=out)
-
+        return imagecodecs.spng_decode(buf, out=out)  # 解码并返回结果
 
 class Tiff(Codec):
-    """TIFF codec for numcodecs."""
+    """TIFF编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_tiff'
 
     def __init__(self, index=None, asrgb=None, verbose=0):
-        self.index = index
-        self.asrgb = bool(asrgb)
-        self.verbose = verbose
+        self.index = index  # 索引
+        self.asrgb = bool(asrgb)  # 是否为RGB
+        self.verbose = verbose  # 详细程度
 
     def encode(self, buf):
-        # TODO: not implemented
-        buf = protective_squeeze(numpy.asarray(buf))
-        return imagecodecs.tiff_encode(buf)
+        # TODO: 尚未实现
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+        return imagecodecs.tiff_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
         return imagecodecs.tiff_decode(
@@ -1175,55 +1112,52 @@ class Tiff(Codec):
             asrgb=self.asrgb,
             verbose=self.verbose,
             out=out,
-        )
-
+        )  # 解码并返回结果
 
 class Webp(Codec):
-    """WebP codec for numcodecs."""
+    """WebP编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_webp'
 
     def __init__(self, level=None, lossless=None, method=None, hasalpha=None):
-        self.level = level
-        self.hasalpha = bool(hasalpha)
-        self.method = method
-        self.lossless = lossless
+        self.level = level  # 编码等级
+        self.hasalpha = bool(hasalpha)  # 是否有Alpha通道
+        self.method = method  # 编码方法
+        self.lossless = lossless  # 是否无损
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         return imagecodecs.webp_encode(
             buf, level=self.level, lossless=self.lossless, method=self.method
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.webp_decode(buf, hasalpha=self.hasalpha, out=out)
-
+        return imagecodecs.webp_decode(buf, hasalpha=self.hasalpha, out=out)  # 解码并返回结果
 
 class Xor(Codec):
-    """XOR codec for numcodecs."""
+    """XOR编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_xor'
 
     def __init__(self, shape=None, dtype=None, axis=-1):
-        self.shape = None if shape is None else tuple(shape)
-        self.dtype = None if dtype is None else numpy.dtype(dtype).str
-        self.axis = axis
+        self.shape = None if shape is None else tuple(shape)  # 形状
+        self.dtype = None if dtype is None else numpy.dtype(dtype).str  # 数据类型
+        self.axis = axis  # 轴
 
     def encode(self, buf):
         if self.shape is not None or self.dtype is not None:
-            buf = protective_squeeze(numpy.asarray(buf))
-            assert buf.shape == self.shape
-            assert buf.dtype == self.dtype
-        return imagecodecs.xor_encode(buf, axis=self.axis).tobytes()
+            buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
+            assert buf.shape == self.shape  # 确保形状匹配
+            assert buf.dtype == self.dtype  # 确保数据类型匹配
+        return imagecodecs.xor_encode(buf, axis=self.axis).tobytes()  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if self.shape is not None or self.dtype is not None:
-            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)
-        return imagecodecs.xor_decode(buf, axis=self.axis, out=_flat(out))
-
+            buf = numpy.frombuffer(buf, dtype=self.dtype).reshape(*self.shape)  # 重新调整形状
+        return imagecodecs.xor_decode(buf, axis=self.axis, out=_flat(out))  # 解码并返回结果
 
 class Zfp(Codec):
-    """ZFP codec for numcodecs."""
+    """ZFP编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_zfp'
 
@@ -1244,23 +1178,23 @@ class Zfp(Codec):
             self.dtype = None
             self.strides = None
         elif shape is None or dtype is None:
-            raise ValueError('invalid shape or dtype')
+            raise ValueError('invalid shape or dtype')  # 如果形状或数据类型无效，则引发错误
         else:
-            self.shape = tuple(shape)
-            self.dtype = numpy.dtype(dtype).str
-            self.strides = None if strides is None else tuple(strides)
-        self.level = level
-        self.mode = mode
-        self.execution = execution
-        self.numthreads = numthreads
-        self.chunksize = chunksize
-        self.header = bool(header)
+            self.shape = tuple(shape)  # 形状
+            self.dtype = numpy.dtype(dtype).str  # 数据类型
+            self.strides = None if strides is None else tuple(strides)  # 步幅
+        self.level = level  # 编码等级
+        self.mode = mode  # 编码模式
+        self.execution = execution  # 执行模式
+        self.numthreads = numthreads  # 线程数
+        self.chunksize = chunksize  # 块大小
+        self.header = bool(header)  # 是否包含头部
 
     def encode(self, buf):
-        buf = protective_squeeze(numpy.asarray(buf))
+        buf = protective_squeeze(numpy.asarray(buf))  # 压缩图像
         if not self.header:
-            assert buf.shape == self.shape
-            assert buf.dtype == self.dtype
+            assert buf.shape == self.shape  # 确保形状匹配
+            assert buf.dtype == self.dtype  # 确保数据类型匹配
         return imagecodecs.zfp_encode(
             buf,
             level=self.level,
@@ -1269,11 +1203,11 @@ class Zfp(Codec):
             header=self.header,
             numthreads=self.numthreads,
             chunksize=self.chunksize,
-        )
+        )  # 编码并返回结果
 
     def decode(self, buf, out=None):
         if self.header:
-            return imagecodecs.zfp_decode(buf, out=out)
+            return imagecodecs.zfp_decode(buf, out=out)  # 解码并返回结果
         return imagecodecs.zfp_decode(
             buf,
             shape=self.shape,
@@ -1281,78 +1215,72 @@ class Zfp(Codec):
             strides=self.strides,
             numthreads=self.numthreads,
             out=out,
-        )
-
+        )  # 解码并返回结果
 
 class Zlib(Codec):
-    """Zlib codec for numcodecs."""
+    """Zlib编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_zlib'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        return imagecodecs.zlib_encode(buf, level=self.level)
+        return imagecodecs.zlib_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.zlib_decode(buf, out=_flat(out))
-
+        return imagecodecs.zlib_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Zlibng(Codec):
-    """Zlibng codec for numcodecs."""
+    """Zlibng编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_zlibng'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        return imagecodecs.zlibng_encode(buf, level=self.level)
+        return imagecodecs.zlibng_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.zlibng_decode(buf, out=_flat(out))
-
+        return imagecodecs.zlibng_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Zopfli(Codec):
-    """Zopfli codec for numcodecs."""
+    """Zopfli编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_zopfli'
 
     def encode(self, buf):
-        return imagecodecs.zopfli_encode(buf)
+        return imagecodecs.zopfli_encode(buf)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.zopfli_decode(buf, out=_flat(out))
-
+        return imagecodecs.zopfli_decode(buf, out=_flat(out))  # 解码并返回结果
 
 class Zstd(Codec):
-    """ZStandard codec for numcodecs."""
+    """ZStandard编解码器用于numcodecs。"""
 
     codec_id = 'imagecodecs_zstd'
 
     def __init__(self, level=None):
-        self.level = level
+        self.level = level  # 编码等级
 
     def encode(self, buf):
-        return imagecodecs.zstd_encode(buf, level=self.level)
+        return imagecodecs.zstd_encode(buf, level=self.level)  # 编码并返回结果
 
     def decode(self, buf, out=None):
-        return imagecodecs.zstd_decode(buf, out=_flat(out))
-
+        return imagecodecs.zstd_decode(buf, out=_flat(out))  # 解码并返回结果
 
 def _flat(out):
-    """Return numpy array as contiguous view of bytes if possible."""
+    """如果可能，将numpy数组返回为字节的连续视图。"""
     if out is None:
         return None
-    view = memoryview(out)
+    view = memoryview(out)  # 创建内存视图
     if view.readonly or not view.contiguous:
         return None
-    return view.cast('B')
-
+    return view.cast('B')  # 转换为字节视图
 
 def register_codecs(codecs=None, force=False, verbose=True):
-    """Register codecs in this module with numcodecs."""
+    """使用numcodecs注册此模块中的编解码器。"""
     for name, cls in globals().items():
         if not hasattr(cls, 'codec_id') or name == 'Codec':
             continue
@@ -1360,27 +1288,26 @@ def register_codecs(codecs=None, force=False, verbose=True):
             continue
         try:
             try:
-                get_codec({'id': cls.codec_id})
+                get_codec({'id': cls.codec_id})  # 获取编解码器
             except TypeError:
-                # registered, but failed
+                # 已注册，但失败
                 pass
         except ValueError:
-            # not registered yet
+            # 尚未注册
             pass
         else:
             if not force:
                 if verbose:
                     log_warning(
-                        f'numcodec {cls.codec_id!r} already registered'
+                        f'numcodec {cls.codec_id!r} 已注册'
                     )
                 continue
             if verbose:
-                log_warning(f'replacing registered numcodec {cls.codec_id!r}')
-        register_codec(cls)
-
+                log_warning(f'替换已注册的numcodec {cls.codec_id!r}')
+        register_codec(cls)  # 注册编解码器
 
 def log_warning(msg, *args, **kwargs):
-    """Log message with level WARNING."""
+    """记录警告级别的消息。"""
     import logging
 
-    logging.getLogger(__name__).warning(msg, *args, **kwargs)
+    logging.getLogger(__name__).warning(msg, *args, **kwargs)  # 记录警告消息

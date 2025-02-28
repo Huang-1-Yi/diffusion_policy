@@ -127,8 +127,11 @@ class PymunkKeypointManager:
         return self.draw_keypoints(img, kps_map=kp_map, **kwargs)
 
 
+
 def test():
-    from diffusion_policy.environment.push_t_env import PushTEnv
+    # hy修改
+    # from diffusion_policy.environment.push_t_env import PushTEnv
+    from diffusion_policy.env.pusht.pusht_env import PushTEnv
     from matplotlib import pyplot as plt
     
     env = PushTEnv(headless=True, obs_state=False, draw_action=False)

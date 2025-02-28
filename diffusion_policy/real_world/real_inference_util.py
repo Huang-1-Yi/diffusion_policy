@@ -31,7 +31,7 @@ def get_real_obs_dict(
             this_data_in = env_obs[key]
             if 'pose' in key and shape == (2,):
                 # take X,Y coordinates
-                this_data_in = this_data_in[...,[0,1]]
+                this_data_in = this_data_in[...,[0,1]]# 从this_data_in数组中选择所有维度，但是在最后一维上只保留索引为0和1的元素
             obs_dict_np[key] = this_data_in
     return obs_dict_np
 

@@ -5,11 +5,11 @@ python train.py --config-name=train_diffusion_lowdim_workspace
 """
 
 import sys
-# use line-buffering for both stdout and stderr
+# 设置为行缓冲模式。标准输出（stdout）和标准错误输出（stderr）每次输出新的一行时都会刷新缓冲区
 sys.stdout = open(sys.stdout.fileno(), mode='w', buffering=1)
 sys.stderr = open(sys.stderr.fileno(), mode='w', buffering=1)
 
-import hydra
+import hydra    #  配置管理和参数化
 from omegaconf import OmegaConf
 import pathlib
 from diffusion_policy.workspace.base_workspace import BaseWorkspace
