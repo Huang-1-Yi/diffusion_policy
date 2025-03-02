@@ -10,22 +10,21 @@ import torch
 import threading
 
 
-
 class BaseWorkspace: # 定义BaseWorkspace类
-    include_keys = tuple() # 包含的键的元组
-    exclude_keys = tuple() # 排除的键的元组
+    include_keys = tuple()              # 包含的键的元组
+    exclude_keys = tuple()              # 排除的键的元组
 
     def __init__(self, cfg: OmegaConf, output_dir: Optional[str]=None): # 初始化方法，接收配置和输出目录参数
-        self.cfg = cfg # 保存配置
-        self._output_dir = output_dir # 保存输出目录
-        self._saving_thread = None # 初始化保存线程为None
+        self.cfg = cfg                  # 保存配置
+        self._output_dir = output_dir   # 保存输出目录
+        self._saving_thread = None      # 初始化保存线程为None
 
     @property
-    def output_dir(self): # 定义输出目录的属性方法
-        output_dir = self._output_dir # 获取输出目录
-        if output_dir is None: # 如果输出目录为None
+    def output_dir(self):               # 定义输出目录的属性方法
+        output_dir = self._output_dir   # 获取输出目录
+        if output_dir is None:          # 如果输出目录为None
             output_dir = HydraConfig.get().runtime.output_dir # 从Hydra配置获取运行时输出目录
-        return output_dir # 返回输出目录
+        return output_dir               # 返回输出目录
     
     def run(self): # 定义运行方法
         """
@@ -122,24 +121,24 @@ class BaseWorkspace: # 定义BaseWorkspace类
         Use save_checkpoint for long-term storage.
         """
         path = pathlib.Path(self.output_dir).joinpath('snapshots', f'{tag}.pkl') # 设置快照路径
-        path.parent.mkdir(parents=False, exist_ok=True) # 创建路径的父目录
-        torch.save(self, path.open('wb'), pickle_module=dill) # 保存快照
-        return str(path.absolute()) # 返回快照的绝对路径
+        path.parent.mkdir(parents=False, exist_ok=True)         # 创建路径的父目录
+        torch.save(self, path.open('wb'), pickle_module=dill)   # 保存快照
+        return str(path.absolute())                             # 返回快照的绝对路径
     
     @classmethod
-    def create_from_snapshot(cls, path): # 从快照创建实例的方法
+    def create_from_snapshot(cls, path):                        # 从快照创建实例的方法
         return torch.load(open(path, 'rb'), pickle_module=dill) # 加载快照并返回实例
 
-def _copy_to_cpu(x): # 定义将数据复制到CPU的方法
-    if isinstance(x, torch.Tensor): # 如果是张量
-        return x.detach().to('cpu') # 复制到CPU
-    elif isinstance(x, dict): # 如果是字典
-        result = dict() # 初始化结果字典
-        for k, v in x.items(): # 遍历字典的键和值
-            result[k] = _copy_to_cpu(v) # 递归复制到CPU
-        return result # 返回结果字典
-    elif isinstance(x, list): # 如果是列表
-        return [_copy_to_cpu(k) for k in x] # 递归复制到CPU
+def _copy_to_cpu(x):    # 定义将数据复制到CPU的方法
+    if isinstance(x, torch.Tensor):     # 如果是张量,复制到CPU
+        return x.detach().to('cpu')
+    elif isinstance(x, dict):           # 如果是字典,初始化结果字典,遍历字典的键和值,递归复制到CPU
+        result = dict()
+        for k, v in x.items():
+            result[k] = _copy_to_cpu(v)
+        return result                   # 返回结果字典
+    elif isinstance(x, list):           # 如果是列表,递归复制到CPU
+        return [_copy_to_cpu(k) for k in x]
     else:
-        return copy.deepcopy(x) # 深拷贝并返回
+        return copy.deepcopy(x)         # 深拷贝并返回
 

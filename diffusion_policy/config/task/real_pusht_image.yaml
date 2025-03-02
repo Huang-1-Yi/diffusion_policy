@@ -1,47 +1,50 @@
-name: real_image
+# 任务定义：定义了任务名称和基本的图像形状以及数据集路径
+name: real_image  # 任务名称
 
-image_shape: [3, 240, 320]
-dataset_path: data/pusht_real/real_pusht_20230105
+mage_shape: [3, 240, 320]  # 图像的形状，3表示通道数（RGB），240表示高度，320表示宽度
+dataset_path: data/pusht_real/real_pusht_20230105  # 数据集路径
 
-shape_meta: &shape_meta
-  # acceptable types: rgb, low_dim
-  obs:
-    camera_0:
-      shape: ${task.image_shape}
-      type: rgb
-    camera_1:
-      shape: ${task.image_shape}
-      type: rgb
-    # camera_2:
-    #   shape: ${task.image_shape}
-    #   type: rgb
-    # camera_3:
-    #   shape: ${task.image_shape}
-    #   type: rgb
-    # camera_4:
-    #   shape: ${task.image_shape}
-    #   type: rgb
-    robot_eef_pose:
-      shape: [2]
-      type: low_dim
-  action: 
-    shape: [2]
+# 形状元数据：定义了观测数据和动作数据的形状和类型，观测数据包括两个相机的RGB图像和机器人的末端执行器位姿，动作数据包含两个维度（X和Y位置）
+shape_meta: &shape_meta  # 定义一个形状元数据的锚点
+  # acceptable types: rgb, low_dim  # 可接受的类型：rgb（图像）、low_dim（低维数据）
+  obs:  # 观测数据的元数据
+    camera_0:  # 第一个相机
+      shape: ${task.image_shape}  # 使用任务中的图像形状
+      type: rgb  # 类型为rgb
+    camera_1:  # 第二个相机
+      shape: ${task.image_shape}  # 使用任务中的图像形状
+      type: rgb  # 类型为rgb
+    # camera_2:  # 注释掉的相机
+    #   shape: ${task.image_shape}  # 使用任务中的图像形状
+    #   type: rgb  # 类型为rgb
+    # camera_3:  # 注释掉的相机
+    #   shape: ${task.image_shape}  # 使用任务中的图像形状
+    #   type: rgb  # 类型为rgb
+    # camera_4:  # 注释掉的相机
+    #   shape: ${task.image_shape}  # 使用任务中的图像形状
+    #   type: rgb  # 类型为rgb
+    robot_eef_pose:  # 机器人末端执行器的位姿
+      shape: [2]  # 形状为2（X和Y位置）
+      type: low_dim  # 类型为低维数据
+  action:  # 动作的元数据
+    shape: [2]  # 形状为2（X和Y位置）
 
-env_runner:
-  _target_: diffusion_policy.env_runner.real_pusht_image_runner.RealPushTImageRunner
+# 环境运行器：指定了用于运行任务的环境运行器类
+env_runner:  # 环境运行器的配置
+  _target_: diffusion_policy.env_runner.real_pusht_image_runner.RealPushTImageRunner  # 指定目标类
 
-dataset:
-  _target_: diffusion_policy.dataset.real_pusht_image_dataset.RealPushTImageDataset
-  shape_meta: *shape_meta
-  dataset_path: ${task.dataset_path}
-  horizon: ${horizon}
-  pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
-  pad_after: ${eval:'${n_action_steps}-1'}
-  n_obs_steps: ${dataset_obs_steps}
-  n_latency_steps: ${n_latency_steps}
-  use_cache: True
-  seed: 42
-  val_ratio: 0.00
-  max_train_episodes: null
-  delta_action: False
-
+# 数据集配置：定义了数据集的详细配置，包括形状元数据、数据集路径、时间范围、填充步数、观测步数、延迟步数、是否使用缓存、随机种子、验证集比例、最大训练集集数和是否使用相对动作。
+dataset:  # 数据集的配置
+  _target_: diffusion_policy.dataset.real_pusht_image_dataset.RealPushTImageDataset  # 指定目标类
+  shape_meta: *shape_meta             # 引用之前定义的形状元数据
+  dataset_path: ${task.dataset_path}  # 使用任务中的数据集路径
+  horizon: ${horizon}                 # 区间 时间范围
+  pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}  # 在开始之前填充的步数
+  pad_after: ${eval:'${n_action_steps}-1'}  # 在结束之后填充的步数
+  n_obs_steps: ${dataset_obs_steps}  # 观测的步数
+  n_latency_steps: ${n_latency_steps}  # 延迟步数
+  use_cache: True  # 是否使用缓存
+  seed: 42  # 随机种子
+  val_ratio: 0.00  # 验证集比例
+  max_train_episodes: null  # 最大训练集集数
+  delta_action: False  # 是否使用相对动作

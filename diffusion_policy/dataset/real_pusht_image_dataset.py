@@ -25,6 +25,7 @@ from diffusion_policy.common.normalize_util import (
     array_to_stats
 )
 
+
 class RealPushTImageDataset(BaseImageDataset):
     def __init__(self,
             shape_meta: dict,
@@ -73,8 +74,6 @@ class RealPushTImageDataset(BaseImageDataset):
                     with zarr.ZipStore(cache_zarr_path, mode='r') as zip_store:
                         replay_buffer = ReplayBuffer.copy_from_store(
                             src_store=zip_store, store=zarr.MemoryStore())
-                        # self.replay_buffer = ReplayBuffer.copy_from_path(       # 从指定路径和键列表复制ReplayBuffer
-                        #         zarr_path, keys=[obs_key, state_key, action_key])   # 复制观测、状态和动作数据
                     print('Loaded!')
         else:
             replay_buffer = _get_replay_buffer(

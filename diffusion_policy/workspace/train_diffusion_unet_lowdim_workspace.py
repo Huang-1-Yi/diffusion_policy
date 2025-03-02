@@ -45,7 +45,6 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace): # 定义TrainDiffusionUn
         # configure model # 配置模型
         self.model: DiffusionUnetLowdimPolicy # 声明模型类型
         self.model = hydra.utils.instantiate(cfg.policy) # 实例化模型
-
         self.ema_model: DiffusionUnetLowdimPolicy = None # 初始化EMA模型为None
         if cfg.training.use_ema: # 如果使用EMA
             self.ema_model = copy.deepcopy(self.model) # 深拷贝模型
@@ -67,7 +66,7 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace): # 定义TrainDiffusionUn
                 self.load_checkpoint(path=lastest_ckpt_path) # 加载检查点
 
         # configure dataset # 配置数据集
-        dataset: BaseLowdimDataset # 声明数据集类型
+        dataset: BaseLowdimDataset                          # 声明数据集类型
         dataset = hydra.utils.instantiate(cfg.task.dataset) # 实例化数据集
         assert isinstance(dataset, BaseLowdimDataset)       # 确认数据集类型
         train_dataloader = DataLoader(dataset, **cfg.dataloader) # 创建训练数据加载器
@@ -135,14 +134,14 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace): # 定义TrainDiffusionUn
         # save batch for sampling # 保存用于采样的批次
         train_sampling_batch = None # 初始化训练采样批次为None
 
-        if cfg.training.debug: # 如果处于调试模式
-            cfg.training.num_epochs = 2 # 设置训练轮数为2
-            cfg.training.max_train_steps = 3 # 设置最大训练步数为3
-            cfg.training.max_val_steps = 3 # 设置最大验证步数为3
-            cfg.training.rollout_every = 1 # 设置每隔1个epoch进行一次rollout
-            cfg.training.checkpoint_every = 1 # 设置每隔1个epoch保存一次检查点
-            cfg.training.val_every = 1 # 设置每隔1个epoch进行一次验证
-            cfg.training.sample_every = 1 # 设置每隔1个epoch进行一次采样
+        if cfg.training.debug:                  # 如果处于调试模式
+            cfg.training.num_epochs = 2         # 设置训练轮数为2
+            cfg.training.max_train_steps = 3    # 设置最大训练步数为3
+            cfg.training.max_val_steps = 3      # 设置最大验证步数为3
+            cfg.training.rollout_every = 1      # 设置每隔1个epoch进行一次rollout
+            cfg.training.checkpoint_every = 1   # 设置每隔1个epoch保存一次检查点
+            cfg.training.val_every = 1          # 设置每隔1个epoch进行一次验证
+            cfg.training.sample_every = 1       # 设置每隔1个epoch进行一次采样
 
         # training loop # 训练循环
         log_path = os.path.join(self.output_dir, 'logs.json.txt') # 日志文件路径

@@ -1,5 +1,5 @@
 if __name__ == "__main__": # 主程序入口
-    import sys          # 导入sys模块
+    import sys # 导入sys模块
     import os # 导入os模块
     import pathlib # 导入pathlib模块
 
@@ -137,14 +137,14 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUne
         # save batch for sampling # 保存用于采样的批次
         train_sampling_batch = None # 初始化训练采样批次为None
 
-        if cfg.training.debug: # 如果处于调试模式
-            cfg.training.num_epochs = 2 # 设置训练轮数为2
-            cfg.training.max_train_steps = 3 # 设置最大训练步数为3
-            cfg.training.max_val_steps = 3 # 设置最大验证步数为3
-            cfg.training.rollout_every = 1 # 设置每隔1个epoch进行一次rollout
-            cfg.training.checkpoint_every = 1 # 设置每隔1个epoch保存一次检查点
-            cfg.training.val_every = 1 # 设置每隔1个epoch进行一次验证
-            cfg.training.sample_every = 1 # 设置每隔1个epoch进行一次采样
+        if cfg.training.debug:              # 如果处于调试模式
+            cfg.training.num_epochs = 2         # 设置训练轮数为2
+            cfg.training.max_train_steps = 3    # 设置最大训练步数为3
+            cfg.training.max_val_steps = 3      # 设置最大验证步数为3
+            cfg.training.rollout_every = 1      # 设置每隔1个epoch进行一次rollout
+            cfg.training.checkpoint_every = 1   # 设置每隔1个epoch保存一次检查点
+            cfg.training.val_every = 1          # 设置每隔1个epoch进行一次验证
+            cfg.training.sample_every = 1       # 设置每隔1个epoch进行一次采样
 
         # training loop # 训练循环
         log_path = os.path.join(self.output_dir, 'logs.json.txt') # 日志文件路径
