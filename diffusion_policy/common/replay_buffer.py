@@ -7,6 +7,25 @@ import numcodecs
 import numpy as np
 from functools import cached_property
 
+"""
+​数据结构
+    使用Zarr的层次结构存储数据：
+        data组：存储时间序列数据（如状态、动作），第一维度为时间步。
+        meta组：存储元数据，包括episode_ends数组记录每个episode的结束位置。
+​核心方法
+    ​分块与压缩：
+        rechunk_recompress_array：重新分块和压缩数组，减少I/O开销。
+        get_optimal_chunks：根据目标块大小自动计算最优分块策略。
+    ​数据管理：
+        add_episode/drop_episode：动态添加/删除episode，自动扩展或收缩数组。
+        get_episode/get_steps_slice：按episode或时间范围查询数据。
+    ​多后端支持：
+        支持Zarr（磁盘/内存存储）和纯NumPy后端，通过backend属性切换。
+​性能优化
+    使用Zarr的分块压缩减少内存占用和I/O负载。
+    cached_property缓存频繁访问的属性（如data和meta）。
+"""
+
 def check_chunks_compatible(chunks: tuple, shape: tuple):
     assert len(shape) == len(chunks)
     for c in chunks:
@@ -164,11 +183,12 @@ class ReplayBuffer:
                     meta[key] = np.array(value)
                 else:
                     meta[key] = value[:]
-
+            
             if keys is None:
-                keys = src_root['data'].keys()
+                keys = src_root['data'].keys()  # 默认复制所有键
             data = dict()
-            for key in keys:
+            for key in keys:                    # 仅复制指定的键
+                # 复制 key 对应的数据
                 arr = src_root['data'][key]
                 data[key] = arr[:]
 
@@ -221,9 +241,13 @@ class ReplayBuffer:
             print('backend argument is deprecated!')
             store = None
         group = zarr.open(os.path.expanduser(zarr_path), 'r')
-        return cls.copy_from_store(src_store=group.store, store=store, 
-            keys=keys, chunks=chunks, compressors=compressors, 
-            if_exists=if_exists, **kwargs)
+        return cls.copy_from_store(src_store=group.store, 
+                                   store=store, 
+                                   keys=keys,  # 传递 keys 参数
+                                   chunks=chunks, 
+                                   compressors=compressors, 
+                                   if_exists=if_exists, 
+                                   **kwargs)
 
     # ============= save methods ===============
     def save_to_store(self, store, 

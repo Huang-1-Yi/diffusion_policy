@@ -25,8 +25,23 @@ class PushTLowdimDataset(BaseLowdimDataset):
             max_train_episodes=None # 最大训练集数
             ):
         super().__init__()          # 调用父类初始化方法
-        self.replay_buffer = ReplayBuffer.copy_from_path(       # 从路径复制ReplayBuffer
-            zarr_path, keys=[obs_key, state_key, action_key])   # 指定键列表
+
+        # 显式指定了需要从 Zarr 存储中复制的数据名称
+        self.replay_buffer = ReplayBuffer.copy_from_path(       # 从指定路径和键列表复制ReplayBuffer
+            zarr_path, keys=[obs_key, state_key, action_key])   # 复制观测、状态和动作数据
+        """
+        假设原始 Zarr 存储包含以下数据集：
+        data/
+        ├── obs
+        ├── state
+        ├── action
+        └── reward
+        调用 ReplayBuffer.copy_from_path(zarr_path, keys=['obs', 'state', 'action']) 后，新 ReplayBuffer 的 data 属性将仅包含：
+            
+            self.replay_buffer.data.keys()  # ['obs', 'state', 'action']
+
+        选择性复制 是 Zarr 和 ReplayBuffer 类的设计特性，确保只加载必要数据，节省内存和存储空间
+        """
 
         val_mask = get_val_mask(        # 获取验证掩码
             n_episodes=self.replay_buffer.n_episodes,  # 重放缓冲区中的剧集数
