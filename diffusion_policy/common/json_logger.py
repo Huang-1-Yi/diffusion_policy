@@ -1,18 +1,16 @@
-from typing import Optional, Callable, Any, Sequence
-import os
-import copy
-import json
-import numbers
-import pandas as pd
-
+from typing import Optional, Callable, Any, Sequence  # 导入类型提示模块
+import os  # 导入操作系统模块
+import copy  # 导入拷贝模块
+import json  # 导入JSON模块
+import numbers  # 导入数字模块
+import pandas as pd  # 导入pandas库
 
 def read_json_log(path: str, 
         required_keys: Sequence[str]=tuple(), 
         **kwargs) -> pd.DataFrame:
     """
-    Read json-per-line file, with potentially incomplete lines.
-    kwargs passed to pd.read_json
-    读取 json-per-line 文件，可能不完整的 rows.kwargs 传递给 pd.read_json
+    读取每行一个JSON的文件，可能包含不完整的行。
+    kwargs传递给pd.read_json
     """
     lines = list()  # 创建一个空列表用于存储行
     with open(path, 'r') as f:
@@ -60,26 +58,19 @@ class JsonLogger:
         # 将指针移动到文件末尾
         pos = file.seek(0, os.SEEK_END)
 
-        # Read each character in the file one at a time from the last
-        # character going backwards, searching for a newline character
-        # If we find a new line, exit the search
         # 从最后一个字符开始，逐个字符向前读取，查找换行符
         while pos > 0 and file.read(1) != "\n":
             pos -= 1
             file.seek(pos, os.SEEK_SET)
-        # now the file pointer is at one past the last '\n'
-        # and pos is at the last '\n'.
         # 现在文件指针位于最后一个换行符之后
         last_line_end = file.tell()
         
-        # find the start of second last line
         # 查找倒数第二行的开始位置
         pos = max(0, pos-1)
         file.seek(pos, os.SEEK_SET)
         while pos > 0 and file.read(1) != "\n":
             pos -= 1
             file.seek(pos, os.SEEK_SET)
-        # now the file pointer is at one past the second last '\n'
         # 现在文件指针位于倒数第二个换行符之后
         last_line_start = file.tell()
 

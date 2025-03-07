@@ -407,46 +407,46 @@ class RealEnv:
         assert self.is_ready # 确保环境已准备好
         
         # stop video recorder
-        self.realsense.stop_recording()         # 停止记录视频
+        self.realsense.stop_recording() # 停止记录视频
 
-        if self.obs_accumulator is not None:    # 如果观察累加器不为空
+        if self.obs_accumulator is not None: # 如果观察累加器不为空
             # recording
-            assert self.action_accumulator is not None              # 确保动作累加器不为空
-            assert self.stage_accumulator is not None               # 确保阶段累加器不为空
+            assert self.action_accumulator is not None # 确保动作累加器不为空
+            assert self.stage_accumulator is not None # 确保阶段累加器不为空
 
             # Since the only way to accumulate obs and action is by calling
             # get_obs and exec_actions, which will be in the same thread.
             # We don't need to worry new data come in here.
-            obs_data = self.obs_accumulator.data                    # 获取观察数据
-            obs_timestamps = self.obs_accumulator.timestamps        # 获取观察时间戳
+            obs_data = self.obs_accumulator.data # 获取观察数据
+            obs_timestamps = self.obs_accumulator.timestamps # 获取观察时间戳
 
-            actions = self.action_accumulator.actions               # 获取动作数据
-            action_timestamps = self.action_accumulator.timestamps  # 获取动作时间戳
-            stages = self.stage_accumulator.actions                 # 获取阶段数据
+            actions = self.action_accumulator.actions # 获取动作数据
+            action_timestamps = self.action_accumulator.timestamps # 获取动作时间戳
+            stages = self.stage_accumulator.actions # 获取阶段数据
             n_steps = min(len(obs_timestamps), len(action_timestamps)) # 获取最小的步骤数
-            if n_steps > 0:                 # 如果步骤数大于0
-                episode = dict()            # 初始化集字典
-                episode['timestamp'] = obs_timestamps[:n_steps]     # 设置时间戳
-                episode['action'] = actions[:n_steps]               # 设置动作
-                episode['stage'] = stages[:n_steps]                 # 设置阶段
-                for key, value in obs_data.items():                 # 遍历观察数据
-                    episode[key] = value[:n_steps]                  # 设置观察数据
+            if n_steps > 0: # 如果步骤数大于0
+                episode = dict() # 初始化集字典
+                episode['timestamp'] = obs_timestamps[:n_steps] # 设置时间戳
+                episode['action'] = actions[:n_steps] # 设置动作
+                episode['stage'] = stages[:n_steps] # 设置阶段
+                for key, value in obs_data.items(): # 遍历观察数据
+                    episode[key] = value[:n_steps] # 设置观察数据
                 self.replay_buffer.add_episode(episode, compressors='disk') # 添加集到重放缓冲区
-                episode_id = self.replay_buffer.n_episodes - 1      # 获取当前集ID
-                print(f'Episode {episode_id} saved!')               # 打印保存消息
-
-            self.obs_accumulator = None         # 清空观察累加器
-            self.action_accumulator = None      # 清空动作累加器
-            self.stage_accumulator = None       # 清空阶段累加器
+                episode_id = self.replay_buffer.n_episodes - 1 # 获取当前集ID
+                print(f'Episode {episode_id} saved!') # 打印保存消息
+            
+            self.obs_accumulator = None # 清空观察累加器
+            self.action_accumulator = None # 清空动作累加器
+            self.stage_accumulator = None # 清空阶段累加器
 
     # 删除最近的记录集，包括删除视频文件和缓冲区中的数据
     def drop_episode(self):
-        self.end_episode()                      # 结束当前记录
-        self.replay_buffer.drop_episode()       # 删除最近的记录
+        self.end_episode() # 结束当前记录
+        self.replay_buffer.drop_episode() # 删除最近的记录
         episode_id = self.replay_buffer.n_episodes # 获取当前集ID
         this_video_dir = self.video_dir.joinpath(str(episode_id)) # 获取视频目录路径
-        if this_video_dir.exists():             # 如果视频目录存在
-            shutil.rmtree(str(this_video_dir))  # 删除视频目录
+        if this_video_dir.exists(): # 如果视频目录存在
+            shutil.rmtree(str(this_video_dir)) # 删除视频目录
         print(f'Episode {episode_id} dropped!') # 打印删除消息
 
 

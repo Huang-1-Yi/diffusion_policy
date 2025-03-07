@@ -25,7 +25,6 @@ from diffusion_policy.common.normalize_util import (
     array_to_stats
 )
 
-
 class RealPushTImageDataset(BaseImageDataset):
     def __init__(self,
             shape_meta: dict,
@@ -246,7 +245,7 @@ def _get_replay_buffer(dataset_path, shape_meta, store):
                 assert tuple(shape) in [(2,),(6,)]
     
     action_shape = tuple(shape_meta['action']['shape'])
-    assert action_shape in [(2,),(6,)]
+    assert action_shape in [(2,),(3,),(6,),(7,),(10,)]
 
     # load data
     cv2.setNumThreads(1)

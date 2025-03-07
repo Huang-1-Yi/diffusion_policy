@@ -5,9 +5,9 @@ defaults:
 name: train_diffusion_transformer_lowdim
 _target_: diffusion_policy.workspace.train_diffusion_transformer_lowdim_workspace.TrainDiffusionTransformerLowdimWorkspace
 
+task_name: ${task.name}
 obs_dim: ${task.obs_dim}
 action_dim: ${task.action_dim}
-task_name: ${task.name}
 exp_name: "default"
 
 horizon: 16

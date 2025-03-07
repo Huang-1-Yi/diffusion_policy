@@ -31,10 +31,10 @@ env_runner: # 环境运行器配置
 
 dataset: # 数据集配置
   _target_: diffusion_policy.dataset.pusht_image_dataset.PushTImageDataset # 指定PushT图像数据集的目标类
-  zarr_path: data/pusht/pusht_cchi_v7_replay.zarr # Zarr数据路径
-  horizon: ${horizon} # 时间跨度
-  pad_before: ${eval:'${n_obs_steps}-1'} # 前填充步数
-  pad_after: ${eval:'${n_action_steps}-1'} # 后填充步数
-  seed: 42 # 随机种子
-  val_ratio: 0.02 # 验证集比例
-  max_train_episodes: 90 # 最大训练集数
+  zarr_path: data/pusht/pusht_cchi_v7_replay.zarr   # Zarr数据路径
+  horizon: ${horizon}                       # 时间跨度
+  pad_before: ${eval:'${n_obs_steps}-1'}    # 前填充步数
+  pad_after: ${eval:'${n_action_steps}-1'}  # 后填充步数
+  seed: 42                                  # 随机种子
+  val_ratio: 0.02                           # 验证集比例
+  max_train_episodes: 90                    # 最大训练集数

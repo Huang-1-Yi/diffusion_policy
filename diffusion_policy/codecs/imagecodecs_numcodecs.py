@@ -763,46 +763,6 @@ class JpegXl(Codec):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class JpegXr(Codec):
     """JPEG XR编解码器用于numcodecs。"""
 

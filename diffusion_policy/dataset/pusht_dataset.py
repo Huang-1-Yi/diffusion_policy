@@ -12,65 +12,50 @@ from diffusion_policy.dataset.base_dataset import BaseLowdimDataset # 导入Base
 # 定义PushTLowdimDataset类，继承自BaseLowdimDataset
 class PushTLowdimDataset(BaseLowdimDataset):
     # 从指定路径复制数据并生成验证掩码和训练掩码，并初始化序列采样器
-    def __init__(self,              # 定义初始化方法
-            zarr_path,              # zarr数据路径
-            horizon=1,              # 时间跨度
-            pad_before=0,           # 前填充步数
-            pad_after=0,            # 后填充步数
-            obs_key='keypoint',     # 观测键
-            state_key='state',      # 状态键
-            action_key='action',    # 动作键
-            seed=42,                # 随机种子
-            val_ratio=0.0,          # 验证集比例
-            max_train_episodes=None # 最大训练集数
+    def __init__(self,  # 定义初始化方法
+            zarr_path,  # zarr数据路径
+            horizon=1,  # 时间跨度
+            pad_before=0,  # 前填充步数
+            pad_after=0,  # 后填充步数
+            obs_key='keypoint',  # 观测键
+            state_key='state',  # 状态键
+            action_key='action',  # 动作键
+            seed=42,  # 随机种子
+            val_ratio=0.0,  # 验证集比例
+            max_train_episodes=None  # 最大训练集数
             ):
-        super().__init__()          # 调用父类初始化方法
+        super().__init__()  # 调用父类初始化方法
+        self.replay_buffer = ReplayBuffer.copy_from_path(  # 从路径复制ReplayBuffer
+            zarr_path, keys=[obs_key, state_key, action_key])  # 指定键列表
 
-        # 显式指定了需要从 Zarr 存储中复制的数据名称
-        self.replay_buffer = ReplayBuffer.copy_from_path(       # 从指定路径和键列表复制ReplayBuffer
-            zarr_path, keys=[obs_key, state_key, action_key])   # 复制观测、状态和动作数据
-        """
-        假设原始 Zarr 存储包含以下数据集：
-        data/
-        ├── obs
-        ├── state
-        ├── action
-        └── reward
-        调用 ReplayBuffer.copy_from_path(zarr_path, keys=['obs', 'state', 'action']) 后，新 ReplayBuffer 的 data 属性将仅包含：
-            
-            self.replay_buffer.data.keys()  # ['obs', 'state', 'action']
-
-        选择性复制 是 Zarr 和 ReplayBuffer 类的设计特性，确保只加载必要数据，节省内存和存储空间
-        """
-
-        val_mask = get_val_mask(        # 获取验证掩码
+        val_mask = get_val_mask(  # 获取验证掩码
             n_episodes=self.replay_buffer.n_episodes,  # 重放缓冲区中的剧集数
-            val_ratio=val_ratio,        # 验证集比例
-            seed=seed)                  # 随机种子
-        train_mask = ~val_mask          # 获取训练掩码
-        train_mask = downsample_mask(   # 下采样训练掩码
+            val_ratio=val_ratio,  # 验证集比例
+            seed=seed)  # 随机种子
+        train_mask = ~val_mask  # 获取训练掩码
+        train_mask = downsample_mask(  # 下采样训练掩码
             mask=train_mask, 
             max_n=max_train_episodes, 
             seed=seed)
 
-        self.sampler = SequenceSampler( # 创建SequenceSampler实例
+        self.sampler = SequenceSampler(  # 创建SequenceSampler实例
             replay_buffer=self.replay_buffer, 
             sequence_length=horizon,
             pad_before=pad_before, 
             pad_after=pad_after,
             episode_mask=train_mask
             )
-        self.obs_key = obs_key          # 设置观测键
-        self.state_key = state_key      # 设置状态键
-        self.action_key = action_key    # 设置动作键
-        self.train_mask = train_mask    # 设置训练掩码
-        self.horizon = horizon          # 设置时间跨度
-        self.pad_before = pad_before    # 设置前填充步数
-        self.pad_after = pad_after      # 设置后填充步数
+        self.obs_key = obs_key  # 设置观测键
+        self.state_key = state_key  # 设置状态键
+        self.action_key = action_key  # 设置动作键
+        self.train_mask = train_mask  # 设置训练掩码
+        self.horizon = horizon  # 设置时间跨度
+        self.pad_before = pad_before  # 设置前填充步数
+        self.pad_after = pad_after  # 设置后填充步数
 
     # 复制当前实例，并创建一个新的序列采样器，使用验证掩码来生成验证数据集
-    def get_validation_dataset(self):   # 获取验证数据集的方法
-        val_set = copy.copy(self)       # 复制当前实例
+    def get_validation_dataset(self):  # 获取验证数据集的方法
+        val_set = copy.copy(self)  # 复制当前实例
         val_set.sampler = SequenceSampler(  # 创建新的SequenceSampler实例用于验证集
             replay_buffer=self.replay_buffer, 
             sequence_length=self.horizon,
@@ -82,9 +67,9 @@ class PushTLowdimDataset(BaseLowdimDataset):
         return val_set  # 返回验证数据集
 
     # 从重放缓冲区采样数据，并使用 LinearNormalizer 对数据进行归一化
-    def get_normalizer(self, mode='limits', **kwargs):      # 获取归一化器的方法
-        data = self._sample_to_data(self.replay_buffer)     # 从重放缓冲区采样数据
-        normalizer = LinearNormalizer()                     # 创建LinearNormalizer实例
+    def get_normalizer(self, mode='limits', **kwargs):  # 获取归一化器的方法
+        data = self._sample_to_data(self.replay_buffer)  # 从重放缓冲区采样数据
+        normalizer = LinearNormalizer()  # 创建LinearNormalizer实例
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)  # 拟合数据
         return normalizer  # 返回归一化器
 

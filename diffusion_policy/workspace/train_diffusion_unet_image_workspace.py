@@ -29,6 +29,7 @@ from diffusion_policy.common.pytorch_util import dict_apply, optimizer_to # 导�
 from diffusion_policy.model.diffusion.ema_model import EMAModel # 导入EMAModel类
 from diffusion_policy.model.common.lr_scheduler import get_scheduler # 导入get_scheduler函数
 
+
 OmegaConf.register_new_resolver("eval", eval, replace=True) # 注册新的解析器
 
 class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUnetImageWorkspace类，继承自BaseWorkspace
@@ -57,7 +58,7 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUne
         # configure training state # 配置训练状态
         self.global_step = 0 # 初始化全局步数
         self.epoch = 0 # 初始化epoch
-
+    
     # 执行训练过程，包括数据集配置、模型训练、验证、采样、日志记录和检查点保存
     def run(self): # 运行方法
         cfg = copy.deepcopy(self.cfg) # 深拷贝配置
@@ -137,20 +138,21 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUne
         # save batch for sampling # 保存用于采样的批次
         train_sampling_batch = None # 初始化训练采样批次为None
 
-        if cfg.training.debug:              # 如果处于调试模式
-            cfg.training.num_epochs = 2         # 设置训练轮数为2
-            cfg.training.max_train_steps = 3    # 设置最大训练步数为3
-            cfg.training.max_val_steps = 3      # 设置最大验证步数为3
-            cfg.training.rollout_every = 1      # 设置每隔1个epoch进行一次rollout
-            cfg.training.checkpoint_every = 1   # 设置每隔1个epoch保存一次检查点
-            cfg.training.val_every = 1          # 设置每隔1个epoch进行一次验证
-            cfg.training.sample_every = 1       # 设置每隔1个epoch进行一次采样
+        if cfg.training.debug: # 如果处于调试模式
+            cfg.training.num_epochs = 2 # 设置训练轮数为2
+            cfg.training.max_train_steps = 3 # 设置最大训练步数为3
+            cfg.training.max_val_steps = 3 # 设置最大验证步数为3
+            cfg.training.rollout_every = 1 # 设置每隔1个epoch进行一次rollout
+            cfg.training.checkpoint_every = 1 # 设置每隔1个epoch保存一次检查点
+            cfg.training.val_every = 1 # 设置每隔1个epoch进行一次验证
+            cfg.training.sample_every = 1 # 设置每隔1个epoch进行一次采样
 
         # training loop # 训练循环
         log_path = os.path.join(self.output_dir, 'logs.json.txt') # 日志文件路径
         with JsonLogger(log_path) as json_logger: # 使用JsonLogger记录日志
             for local_epoch_idx in range(cfg.training.num_epochs): # 遍历训练轮数
                 step_log = dict() # 初始化步日志
+                
                 # ========= train for this epoch ========== # 训练当前epoch
                 if cfg.training.freeze_encoder: # 如果冻结编码器
                     self.model.obs_encoder.eval() # 设置编码器为评估模式

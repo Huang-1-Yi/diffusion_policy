@@ -2,11 +2,7 @@ from typing import Tuple  # 导入类型提示模块
 import math  # 导入数学模块
 import cv2  # 导入OpenCV库
 import numpy as np  # 导入numpy库
-"""
-导入必要的库和模块。typing用于类型注解，math提供数学计算，cv2是OpenCV库，用于图像处理，numpy用于数值计算
-提供了基本的图像处理功能，如绘制标记、文本，以及调整图像大小和裁剪。最后一个函数则用于优化多个图像在特定分辨率下的排列方式。
-"""
-# 在图像上绘制一个十字准线（即瞄准标记）
+
 def draw_reticle(img, u, v, label_color):
     """
     在图像上绘制准星（十字线）。
@@ -28,8 +24,6 @@ def draw_reticle(img, u, v, label_color):
     cv2.line(img, (u, v - 1), (u, v - 3), white, 1)  # 绘制垂直线
     cv2.line(img, (u - 1, v), (u - 3, v), white, 1)  # 绘制水平线
 
-
-# 在图像上绘制多行文本，并带有轮廓
 def draw_text(
     img,
     *,
@@ -43,7 +37,7 @@ def draw_text(
     line_spacing=1.5,
 ):
     """
-    绘制带有轮廓的多行文本.
+    绘制带有轮廓的多行文本。
     """
     assert isinstance(text, str)  # 确保文本为字符串
 
@@ -84,7 +78,6 @@ def draw_text(
 
         uv_top_left += [0, h * line_spacing]  # 更新顶部左侧位置
 
-# 获取图像的转换函数，用于调整图像大小和裁剪
 def get_image_transform(
         input_res: Tuple[int,int]=(1280,720), 
         output_res: Tuple[int,int]=(640,480), 
@@ -125,23 +118,22 @@ def get_image_transform(
 
     return transform
 
-# 计算最佳的行数和列数，以便将多个相机图像合理地排列在一个给定的最大分辨率区域内。
 def optimal_row_cols(
         n_cameras,
         in_wh_ratio,
         max_resolution=(1920, 1080)
     ):
-    out_w, out_h = max_resolution   # 输出分辨率宽高
-    out_wh_ratio = out_w / out_h    # 输出宽高比
+    out_w, out_h = max_resolution  # 输出分辨率宽高
+    out_wh_ratio = out_w / out_h  # 输出宽高比
     
-    n_rows = np.arange(n_cameras,dtype=np.int64) + 1    # 计算行数数组
+    n_rows = np.arange(n_cameras,dtype=np.int64) + 1  # 计算行数数组
     n_cols = np.ceil(n_cameras / n_rows).astype(np.int64)  # 计算列数数组
-    cat_wh_ratio = in_wh_ratio * (n_cols / n_rows)      # 计算拼接宽高比
-    ratio_diff = np.abs(out_wh_ratio - cat_wh_ratio)    # 计算宽高比差异
-    best_idx = np.argmin(ratio_diff)                    # 找到最佳索引
-    best_n_row = n_rows[best_idx]                       # 最佳行数
-    best_n_col = n_cols[best_idx]                       # 最佳列数
-    best_cat_wh_ratio = cat_wh_ratio[best_idx]          # 最佳拼接宽高比
+    cat_wh_ratio = in_wh_ratio * (n_cols / n_rows)  # 计算拼接宽高比
+    ratio_diff = np.abs(out_wh_ratio - cat_wh_ratio)  # 计算宽高比差异
+    best_idx = np.argmin(ratio_diff)  # 找到最佳索引
+    best_n_row = n_rows[best_idx]  # 最佳行数
+    best_n_col = n_cols[best_idx]  # 最佳列数
+    best_cat_wh_ratio = cat_wh_ratio[best_idx]  # 最佳拼接宽高比
 
     rw, rh = None, None
     if best_cat_wh_ratio >= out_wh_ratio:

@@ -31,39 +31,30 @@ from diffusion_policy.common.normalize_util import (
 )
 register_codecs()
 
-# 考虑将n_demo＜len(demos)时的情况，修改RobomimicReplayImageDataset类，使其支持加载部分数据集。
-# demos = file['data']
-# len(demos)
-
-# 加载 robomimic 数据集，支持归一化、缓存、数据采样 
 class RobomimicReplayImageDataset(BaseImageDataset):
     def __init__(self,
-            shape_meta: dict,   # 数据的形状元信息，包括 obs（观测）和 action（动作）
+            shape_meta: dict,
             dataset_path: str,
-            horizon=1,          # 采样的时间跨度（影响序列长度）
+            horizon=1,
             pad_before=0,
             pad_after=0,
-            n_obs_steps=None,   # 指定观测步数（若为 None，则使用全部）
-            abs_action=False,   # 是否使用绝对动作坐标系（默认 False）
-            rotation_rep='rotation_6d', # ignored when abs_action=False 旋转表示方式（rotation_6d）
+            n_obs_steps=None,
+            abs_action=False,
+            rotation_rep='rotation_6d', # ignored when abs_action=False
             use_legacy_normalizer=False,
-            use_cache=False,    # 是否使用 zarr 格式的缓存，加速数据加载
+            use_cache=False,
             seed=42,
-            val_ratio=0.0,
-            n_demo=100          # 修改 添加的参数，额外的  n_demo=len(demos) 个数
+            val_ratio=0.0
         ):
-        self.n_demo = n_demo    # 修改
-        # robomimic 采用 axis_angle 旋转表示，该代码将其转换为 rotation_6d 格式，便于模型训练
         rotation_transformer = RotationTransformer(
             from_rep='axis_angle', to_rep=rotation_rep)
 
         replay_buffer = None
-        # 如果启用 use_cache=True，那么数据加载后会转换成 zarr 格式，并存入缓存文件 dataset.zarr.zip，加快后续训练
         if use_cache:
-            cache_zarr_path = dataset_path + f'.{n_demo}.' + '.zarr.zip'        # 修改，重命名包括数量名
+            cache_zarr_path = dataset_path + '.zarr.zip'
             cache_lock_path = cache_zarr_path + '.lock'
             print('Acquiring lock on cache.')
-            with FileLock(cache_lock_path):         # FileLock 确保多个进程不会同时访问缓存，防止数据损坏
+            with FileLock(cache_lock_path):
                 if not os.path.exists(cache_zarr_path):
                     # cache does not exists
                     try:
@@ -74,8 +65,7 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                             shape_meta=shape_meta, 
                             dataset_path=dataset_path, 
                             abs_action=abs_action, 
-                            rotation_transformer=rotation_transformer,
-                            n_demo=n_demo)       # 修改
+                            rotation_transformer=rotation_transformer)
                         print('Saving cache to disk.')
                         with zarr.ZipStore(cache_zarr_path) as zip_store:
                             replay_buffer.save_to_store(
@@ -96,10 +86,8 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                 shape_meta=shape_meta, 
                 dataset_path=dataset_path, 
                 abs_action=abs_action, 
-                rotation_transformer=rotation_transformer,
-                n_demo=n_demo)       # 修改
-        
-        # 遍历 shape_meta，把RGB图像数据 和 低维传感器数据 分类
+                rotation_transformer=rotation_transformer)
+
         rgb_keys = list()
         lowdim_keys = list()
         obs_shape_meta = shape_meta['obs']
@@ -112,32 +100,18 @@ class RobomimicReplayImageDataset(BaseImageDataset):
         
         # for key in rgb_keys:
         #     replay_buffer[key].compressor.numthreads=1
-        # 训练/验证数据拆分
-        key_first_k = dict()# 存储每个观测数据（如 RGB 图像和低维数据）的处理方式
-        if n_obs_steps is not None:# 检查观测步数的数量。如果 n_obs_steps 被指定了，那么只取前 n_obs_steps 个观测数据
+
+        key_first_k = dict()
+        if n_obs_steps is not None:
             # only take first k obs from images
-            # 选择图像数据中的前 k 个观测数据，k 由 n_obs_steps 确定
-            # 遍历拼接后的所有键（包含 RGB 图像和低维数据的键），并将每个键的值设置为 n_obs_steps
-            for key in rgb_keys + lowdim_keys:# 假设 rgb_keys 和 lowdim_keys 分别是包含 RGB 图像和低维数据键名（如动作或其他传感器数据）的列表（或其他可迭代对象）。+ 操作符将这两个列表拼接在一起
+            for key in rgb_keys + lowdim_keys:
                 key_first_k[key] = n_obs_steps
-            """
-            如果 rgb_keys = ['image_1', 'image_2'] 和 lowdim_keys = ['action', 'velocity']，
-            且 n_obs_steps = 3，那么最终 key_first_k 会是：
-            {
-            'image_1': 3,
-            'image_2': 3,
-            'action': 3,
-            'velocity': 3
-            }
-            """
-        
-        # 随机划分训练和验证数据
+
         val_mask = get_val_mask(
             n_episodes=replay_buffer.n_episodes, 
             val_ratio=val_ratio,
             seed=seed)
         train_mask = ~val_mask
-        # 负责采样固定时间跨度的轨迹数据
         sampler = SequenceSampler(
             replay_buffer=replay_buffer, 
             sequence_length=horizon,
@@ -159,7 +133,6 @@ class RobomimicReplayImageDataset(BaseImageDataset):
         self.pad_after = pad_after
         self.use_legacy_normalizer = use_legacy_normalizer
 
-    # 全部作为测试数据？
     def get_validation_dataset(self):
         val_set = copy.copy(self)
         val_set.sampler = SequenceSampler(
@@ -171,26 +144,13 @@ class RobomimicReplayImageDataset(BaseImageDataset):
             )
         val_set.train_mask = ~self.train_mask
         return val_set
-    
-    # 实现数据归一化
-    # 计算动作的统计信息，并归一化到 [0, 1] 或 [-1, 1]，防止数据范围过大影响训练
+
     def get_normalizer(self, **kwargs) -> LinearNormalizer:
-        # LinearNormalizer 线性标准化器，用于对数据进行线性变换，将数据标准化到某个指定范围（通常是 [-1, 1] 或 [0, 1]）
         normalizer = LinearNormalizer()
 
         # action
         stat = array_to_stats(self.replay_buffer['action'])
-        """
-        从 replay_buffer 中提取动作数据（self.replay_buffer['action']）并计算其统计量，存储在 stat 中。
-        array_to_stats 是一个函数，通常会计算数据的均值、标准差、最大值、最小值等统计信息。
-        """
         if self.abs_action:
-            """
-            如果使用了 绝对动作（abs_action）：
-                如果动作的均值 stat['mean'] 的最后一个维度大于 10，说明这是一个双臂任务（dual_arm），使用专门为双臂设计的标准化器 robomimic_abs_action_only_dual_arm_normalizer_from_stat(stat)。
-                否则，使用单臂的标准化器 robomimic_abs_action_only_normalizer_from_stat(stat)。
-                如果启用了 传统标准化器 (use_legacy_normalizer) ，则会使用 normalizer_from_stat(stat) 进一步调整。
-            """
             if stat['mean'].shape[-1] > 10:
                 # dual arm
                 this_normalizer = robomimic_abs_action_only_dual_arm_normalizer_from_stat(stat)
@@ -201,22 +161,13 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                 this_normalizer = normalizer_from_stat(stat)
         else:
             # already normalized
-            # 如果不使用绝对动作（abs_action 为 False），那么动作已经被归一化，
-            # 使用 get_identity_normalizer_from_stat(stat)，这意味着数据将不会进行进一步的标准化。
             this_normalizer = get_identity_normalizer_from_stat(stat)
-        # 将处理好的动作标准化器 this_normalizer 存储到 normalizer 字典中的 action 键下
         normalizer['action'] = this_normalizer
 
         # obs
         for key in self.lowdim_keys:
-            # 对 lowdim_keys 中的每个键（这些键对应低维数据，如位置信息、四元数等），提取其统计信息并进行标准化
             stat = array_to_stats(self.replay_buffer[key])
-            """
-            根据键的结尾（例如，'pos'、'quat'、'qpos' 等）来确定标准化方式：
-            如果是位置（'pos'）或关节位置（'qpos'），使用 get_range_normalizer_from_stat(stat) 进行归一化，通常将数据归一化到 [-1, 1] 范围。
-            如果是四元数（'quat'），由于四元数通常已经处于 [-1, 1] 的范围，因此使用 get_identity_normalizer_from_stat(stat) 保持原始范围。
-            如果没有符合这些条件的键，抛出错误（RuntimeError）。
-            """
+
             if key.endswith('pos'):
                 this_normalizer = get_range_normalizer_from_stat(stat)
             elif key.endswith('quat'):
@@ -229,13 +180,8 @@ class RobomimicReplayImageDataset(BaseImageDataset):
             normalizer[key] = this_normalizer
 
         # image
-        """
-        对于图像数据（通过 rgb_keys 指定的键），使用 get_image_range_normalizer() 进行标准化。
-        通常，图像数据需要根据某些预定义规则（如将像素值归一化到 [0, 1] 或 [-1, 1] 范围）进行处理
-        """
         for key in self.rgb_keys:
             normalizer[key] = get_image_range_normalizer()
-        
         return normalizer
 
     def get_all_actions(self) -> torch.Tensor:
@@ -245,16 +191,6 @@ class RobomimicReplayImageDataset(BaseImageDataset):
         return len(self.sampler)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        """
-        读取 idx 对应的轨迹序列数据
-        归一化 RGB 图像 (uint8 → float32) 并转换为 PyTorch Tensor
-        返回格式：
-        {
-            'obs': {'rgb': torch.Tensor, 'lowdim': torch.Tensor},
-            'action': torch.Tensor
-        }
-
-        """
         threadpool_limits(1)
         data = self.sampler.sample_sequence(idx)
 
@@ -283,8 +219,7 @@ class RobomimicReplayImageDataset(BaseImageDataset):
         }
         return torch_data
 
-# _convert_actions 函数将原始动作转换为绝对动作
-# 调整动作维度，如果是双臂机器人，则拆分 14维 数据,为 2个 7维 数据
+
 def _convert_actions(raw_actions, abs_action, rotation_transformer):
     actions = raw_actions
     if abs_action:
@@ -307,9 +242,9 @@ def _convert_actions(raw_actions, abs_action, rotation_transformer):
         actions = raw_actions
     return actions
 
-# 转换 hdf5 数据为 zarr 格式，提高读取速度
+
 def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, rotation_transformer, 
-        n_workers=None, max_inflight_tasks=None, n_demo=100):       # 修改
+        n_workers=None, max_inflight_tasks=None):
     if n_workers is None:
         n_workers = multiprocessing.cpu_count()
     if max_inflight_tasks is None:
@@ -337,7 +272,7 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
         demos = file['data']
         episode_ends = list()
         prev_end = 0
-        for i in range(len(demos)):       # 修改
+        for i in range(len(demos)):
             demo = demos[f'demo_{i}']
             episode_length = demo['actions'].shape[0]
             episode_end = prev_end + episode_length
@@ -354,7 +289,7 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
             if key == 'action':
                 data_key = 'actions'
             this_data = list()
-            for i in range(len(demos)):       # 修改
+            for i in range(len(demos)):
                 demo = demos[f'demo_{i}']
                 this_data.append(demo[data_key][:].astype(np.float32))
             this_data = np.concatenate(this_data, axis=0)
@@ -401,7 +336,7 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
                         compressor=this_compressor,
                         dtype=np.uint8
                     )
-                    for episode_idx in range(len(demos)):       # 修改
+                    for episode_idx in range(len(demos)):
                         demo = demos[f'demo_{episode_idx}']
                         hdf5_arr = demo['obs'][key]
                         for hdf5_idx in range(hdf5_arr.shape[0]):
@@ -427,7 +362,6 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
     replay_buffer = ReplayBuffer(root)
     return replay_buffer
 
-# 从统计数据中获取归一化器
 def normalizer_from_stat(stat):
     max_abs = np.maximum(stat['max'].max(), np.abs(stat['min']).max())
     scale = np.full_like(stat['max'], fill_value=1/max_abs)
