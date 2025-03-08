@@ -259,8 +259,10 @@ def _get_replay_buffer(dataset_path, shape_meta, store):
         )
 
     # transform lowdim dimensions
+    # 仅仅保留X和Y
     if action_shape == (2,):
         # 2D action space, only controls X and Y
+        # 2D动作空间，仅控制X和Y
         zarr_arr = replay_buffer['action']
         zarr_resize_index_last_dim(zarr_arr, idxs=[0,1])
     
