@@ -1,0 +1,62 @@
+关键模块交互流程:
+sequenceDiagram
+    participant User
+    participant Pipeline
+    participant Env
+    
+    User->>Pipeline: 提供任务描述("移动红色杯子")
+    Pipeline->>Env: 获取初始图像
+    Pipeline->>Pipeline: initial_perception()
+    Pipeline->>User: 返回对象信息
+    
+    loop 视频流处理
+        Env->>Pipeline: 发送视频帧
+        Pipeline->>Pipeline: track_objects()
+        Pipeline->>Pipeline: 更新轨迹数据
+    end
+    
+    Pipeline->>Pipeline: generate_actions()
+    Pipeline->>Env: 执行生成动作
+    Env->>Pipeline: 反馈执行结果
+
+
+模块交互与时空信息流:
+sequenceDiagram
+    participant Env as 环境
+    participant MOP as 感知模块
+    participant TCT as 跟踪模块
+    participant CDP as 策略模块
+    
+    Env->>MOP: 初始图像I₀ + 任务描述T
+    MOP->>TCT: 对象特征O₀(M,f_v,f_t)
+    TCT->>CDP: 时序状态O_{1:t}
+    CDP->>Env: 执行动作A
+    
+    loop 视频流
+        Env->>TCT: 新帧I_t
+        TCT-->>TCT: 状态预测x̂_t
+        TCT-->>TCT: 观测更新Σ_t
+        TCT->>CDP: 实时状态O_t
+        CDP-->>CDP: 轨迹优化
+    end
+
+
+视觉语言模型（VLM）与分割模型交互:
+graph TD
+    A[输入图像] --> B(SoM分割模型)
+    B --> C{生成N个候选掩模}
+    C --> D[提取每个掩模的ROI图像]
+    D --> E(VLM多模态对齐)
+    E --> F[计算掩模-文本匹配得分]
+    F --> G[选择最高分掩模]
+    G --> H[返回目标对象信息]
+
+层级化交互机制:
+graph TB
+    A[原始图像] --> B1(粗分割)
+    B1 --> C1{区域筛选}
+    C1 --> D1[保留Top-K区域]
+    D1 --> B2(精细分割)
+    B2 --> E[多尺度特征提取]
+    E --> F[VLM层级匹配]
+    F --> G[融合决策]
