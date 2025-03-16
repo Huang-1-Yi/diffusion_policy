@@ -54,9 +54,10 @@ class DiffusionTransformerHybridImagePolicy(BaseImagePolicy):
         obs_shape_meta = shape_meta['obs']
         obs_config = {
             'low_dim': [],
-            'rgb': [],
-            'depth': [],
-            'scan': []
+            'rgb': []
+            # ,
+            # 'depth': [],
+            # 'scan': []
         }
         obs_key_shapes = dict()
         for key, attr in obs_shape_meta.items():
@@ -70,7 +71,7 @@ class DiffusionTransformerHybridImagePolicy(BaseImagePolicy):
                 obs_config['low_dim'].append(key)
             else:
                 raise RuntimeError(f"Unsupported obs type: {type}")
-
+        
         # get raw robomimic config
         config = get_robomimic_config(
             algo_name='bc_rnn',
