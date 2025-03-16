@@ -177,24 +177,24 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUne
                             lr_scheduler.step() # 更新学习率调度器
                         
                         # update ema # 更新EMA
-                        if cfg.training.use_ema: # 如果使用EMA
-                            ema.step(self.model) # 更新EMA
+                        if cfg.training.use_ema:            # 如果使用EMA
+                            ema.step(self.model)            # 更新EMA
 
                         # logging # 日志记录
-                        raw_loss_cpu = raw_loss.item() # 获取原始损失值
+                        raw_loss_cpu = raw_loss.item()      # 获取原始损失值
                         tepoch.set_postfix(loss=raw_loss_cpu, refresh=False) # 更新进度条显示损失
-                        train_losses.append(raw_loss_cpu) # 添加损失到训练损失列表
-                        step_log = { # 记录步日志
+                        train_losses.append(raw_loss_cpu)   # 添加损失到训练损失列表
+                        step_log = {                        # 记录步日志
                             'train_loss': raw_loss_cpu,
                             'global_step': self.global_step,
                             'epoch': self.epoch,
                             'lr': lr_scheduler.get_last_lr()[0]
                         }
 
-                        is_last_batch = (batch_idx == (len(train_dataloader)-1)) # 是否为最后一个批次
-                        if not is_last_batch: # 如果不是最后一个批次
+                        is_last_batch = (batch_idx == (len(train_dataloader)-1))    # 是否为最后一个批次
+                        if not is_last_batch:                                       # 如果不是最后一个批次
                             # log of last step is combined with validation and rollout # 最后一步的日志与验证和rollout结合
-                            wandb_run.log(step_log, step=self.global_step) # 记录wandb日志
+                            wandb_run.log(step_log, step=self.global_step)          # 记录wandb日志
                             json_logger.log(step_log) # 记录json日志
                             self.global_step += 1 # 全局步数加1
 
@@ -202,76 +202,76 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUne
                             and batch_idx >= (cfg.training.max_train_steps-1): # 如果达到最大训练步数
                             break # 跳出循环
 
-                # at the end of each epoch # 每个epoch结束时
+                # at the end of each epoch              # 每个epoch结束时
                 # replace train_loss with epoch average # 用epoch平均值替换训练损失
-                train_loss = np.mean(train_losses) # 计算训练损失平均值
-                step_log['train_loss'] = train_loss # 更新步日志中的训练损失
+                train_loss = np.mean(train_losses)      # 计算训练损失平均值
+                step_log['train_loss'] = train_loss     # 更新步日志中的训练损失
 
                 # ========= eval for this epoch ========== # 评估当前epoch
-                policy = self.model # 获取模型策略
-                if cfg.training.use_ema: # 如果使用EMA
-                    policy = self.ema_model # 获取EMA模型策略
-                policy.eval() # 设置模型为评估模式
+                policy = self.model             # 获取模型策略
+                if cfg.training.use_ema:        # 如果使用EMA
+                    policy = self.ema_model     # 获取EMA模型策略
+                policy.eval()                   # 设置模型为评估模式
 
-                # run rollout # 运行rollout
-                if (self.epoch % cfg.training.rollout_every) == 0: # 如果到达rollout间隔
+                # run rollout                                       # 运行rollout
+                if (self.epoch % cfg.training.rollout_every) == 0:  # 如果到达rollout间隔
                     runner_log = env_runner.run(policy) # 运行环境并获取日志
-                    # log all # 记录所有日志
-                    step_log.update(runner_log) # 更新步日志
+                    # log all                           # 记录所有日志
+                    step_log.update(runner_log)         # 更新步日志
 
                 # run validation # 运行验证
-                if (self.epoch % cfg.training.val_every) == 0: # 如果到达验证间隔
-                    with torch.no_grad(): # 不计算梯度
-                        val_losses = list() # 初始化验证损失列表
+                if (self.epoch % cfg.training.val_every) == 0:          # 如果到达验证间隔
+                    with torch.no_grad():                               # 不计算梯度
+                        val_losses = list()                             # 初始化验证损失列表
                         with tqdm.tqdm(val_dataloader, desc=f"Validation epoch {self.epoch}", 
-                                leave=False, mininterval=cfg.training.tqdm_interval_sec) as tepoch: # 创建tqdm进度条
-                            for batch_idx, batch in enumerate(tepoch): # 遍历验证数据加载器
-                                batch = dict_apply(batch, lambda x: x.to(device, non_blocking=True)) # 数据转移到设备
-                                loss = self.model.compute_loss(batch) # 计算损失
-                                val_losses.append(loss) # 添加损失到验证损失列表
+                                leave=False, mininterval=cfg.training.tqdm_interval_sec) as tepoch:     # 创建tqdm进度条
+                            for batch_idx, batch in enumerate(tepoch):  # 遍历验证数据加载器
+                                batch = dict_apply(batch, lambda x: x.to(device, non_blocking=True))    # 数据转移到设备
+                                loss = self.model.compute_loss(batch)   # 计算损失
+                                val_losses.append(loss)                 # 添加损失到验证损失列表
                                 if (cfg.training.max_val_steps is not None) \
-                                    and batch_idx >= (cfg.training.max_val_steps-1): # 如果达到最大验证步数
-                                    break # 跳出循环
-                        if len(val_losses) > 0: # 如果有验证损失
-                            val_loss = torch.mean(torch.tensor(val_losses)).item() # 计算验证损失平均值
-                            # log epoch average validation loss # 记录epoch平均验证损失
-                            step_log['val_loss'] = val_loss # 更新步日志中的验证损失
+                                    and batch_idx >= (cfg.training.max_val_steps-1):    # 如果达到最大验证步数
+                                    break                               # 跳出循环
+                        if len(val_losses) > 0:                         # 如果有验证损失
+                            val_loss = torch.mean(torch.tensor(val_losses)).item()      # 计算验证损失平均值
+                            # log epoch average validation loss         # 记录epoch平均验证损失
+                            step_log['val_loss'] = val_loss             # 更新步日志中的验证损失
 
                 # run diffusion sampling on a training batch # 在训练批次上运行扩散采样
                 if (self.epoch % cfg.training.sample_every) == 0: # 如果到达采样间隔
                     with torch.no_grad(): # 不计算梯度
                         # sample trajectory from training set, and evaluate difference # 从训练集中采样轨迹，并评估差异
                         batch = dict_apply(train_sampling_batch, lambda x: x.to(device, non_blocking=True)) # 获取训练采样批次
-                        obs_dict = batch['obs'] # 构建观测字典
-                        gt_action = batch['action'] # 获取真实动作
+                        obs_dict = batch['obs']                         # 构建观测字典
+                        gt_action = batch['action']                     # 获取真实动作
                         
-                        result = policy.predict_action(obs_dict) # 预测动作
-                        pred_action = result['action_pred'] # 获取预测动作
+                        result = policy.predict_action(obs_dict)        # 预测动作
+                        pred_action = result['action_pred']             # 获取预测动作
                         mse = torch.nn.functional.mse_loss(pred_action, gt_action) # 计算均方误差
                         step_log['train_action_mse_error'] = mse.item() # 更新步日志中的均方误差
-                        del batch # 释放内存
-                        del obs_dict # 释放内存
-                        del gt_action # 释放内存
-                        del result # 释放内存
-                        del pred_action # 释放内存
-                        del mse # 释放内存
+                        del batch                                       # 释放内存
+                        del obs_dict                                    # 释放内存
+                        del gt_action                                   # 释放内存
+                        del result                                      # 释放内存
+                        del pred_action                                 # 释放内存
+                        del mse                                         # 释放内存
                 
                 # checkpoint # 检查点
                 if (self.epoch % cfg.training.checkpoint_every) == 0: # 如果到达检查点间隔
                     # checkpointing # 保存检查点
-                    if cfg.checkpoint.save_last_ckpt: # 如果保存最后一个检查点
-                        self.save_checkpoint() # 保存检查点
-                    if cfg.checkpoint.save_last_snapshot: # 如果保存最后一个快照
-                        self.save_snapshot() # 保存快照
+                    if cfg.checkpoint.save_last_ckpt:           # 如果保存最后一个检查点
+                        self.save_checkpoint()                  # 保存检查点
+                    if cfg.checkpoint.save_last_snapshot:       # 如果保存最后一个快照
+                        self.save_snapshot()                    # 保存快照
 
                     # sanitize metric names # 清理度量名称
-                    metric_dict = dict() # 初始化度量字典
-                    for key, value in step_log.items(): # 遍历步日志
-                        new_key = key.replace('/', '_') # 替换斜杠为下划线
-                        metric_dict[new_key] = value # 更新度量字典
+                    metric_dict = dict()                        # 初始化度量字典
+                    for key, value in step_log.items():         # 遍历步日志
+                        new_key = key.replace('/', '_')         # 替换斜杠为下划线
+                        metric_dict[new_key] = value            # 更新度量字典
                     
-                    # We can't copy the last checkpoint here # 这里不能复制最后一个检查点
-                    # since save_checkpoint uses threads. # 因为save_checkpoint使用线程
+                    # We can't copy the last checkpoint here    # 这里不能复制最后一个检查点
+                    # since save_checkpoint uses threads.       # 因为save_checkpoint使用线程
                     # therefore at this point the file might have been empty! # 因此此时文件可能是空的！
                     topk_ckpt_path = topk_manager.get_ckpt_path(metric_dict) # 获取TopK检查点路径
 
@@ -282,10 +282,10 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace): # 定义TrainDiffusionUne
 
                 # end of epoch # epoch结束
                 # log of last step is combined with validation and rollout # 最后一步的日志与验证和rollout结合
-                wandb_run.log(step_log, step=self.global_step) # 记录wandb日志
-                json_logger.log(step_log) # 记录json日志
-                self.global_step += 1 # 全局步数加1
-                self.epoch += 1 # epoch加1
+                wandb_run.log(step_log, step=self.global_step)  # 记录wandb日志
+                json_logger.log(step_log)                       # 记录json日志
+                self.global_step += 1                           # 全局步数加1
+                self.epoch += 1                                 # epoch加1
 
 @hydra.main( # 定义hydra主函数
     version_base=None,
